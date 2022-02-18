@@ -15,7 +15,8 @@ Decentralization is a central characteristic of biological motor control that al
 
 The repository consists of multiple parts, all written in Python, and there are multiple experiments:
 
-* train_experiment_1_architecture_on_flat.py = Script for training models.  The first learning experiment aims to answer the question how does different control architectures—w.r.t. decentralization of the action space and input scope of the observation space–affect learning over time. Trained on flat terrain and aiming for running as fast as possible. Details, sect. 4.1 - 4.3.* train_experiment_3_architecture_curriculum_targetvel.py Script for training models. The goal of the last task is to turn towards a more realistic scenario which brings us closer to realization on a robot. We aim for training an agent towards a stable walking speed in increasingly more and more difficult terrain. Details, sect. 4.6 and 4.7.
+* train_experiment_1_architecture_on_flat.py = Script for training models.  The first learning experiment aims to answer the question how does different control architectures—w.r.t. decentralization of the action space and input scope of the observation space–affect learning over time. Trained on flat terrain and aiming for running as fast as possible. Details, sect. 4.1 - 4.3.
+* train_experiment_3_architecture_curriculum_targetvel.py Script for training models. The goal of the last task is to turn towards a more realistic scenario which brings us closer to realization on a robot. We aim for training an agent towards a stable walking speed in increasingly more and more difficult terrain. Details, sect. 4.6 and 4.7.
 * evaluation = Folder with scripts for evaluation. These scripts are running trained controller and collecting data (velocity, return, distance, cost of transport) which are saved in panda files.
 * Results = Contains trained models from first and third experiment, plus results from all the evaluations.
 * stats = calculating statistical comparisons, based on previously run evaluations.
@@ -48,6 +49,14 @@ As a framework for DRL we used Ray (version 1.0.1) and RLlib. Ray is a framework
 Experiments were run in simulation using the Mujoco physics engine. We used Mujoco in version 1.50.1.68
 
 Deep neural network models were realized in tensorflow 2 (version 2.3.1)
+
+## (Fork EDIT) Setup Instructions
+
+0. Install system requirements: `sudo apt install libx11-dev libglew-dev libosmesa6-dev patchelf`
+1. Download to mujoco binary [from the official repository](https://github.com/deepmind/mujoco/releases) (tested with version 2.1.0) and extract it to `~/.mujoco/mujoco210`.
+2. Append the necessary paths to the `LD_LIBRARY_PATH` environment variable:
+    1. `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/$USER/.mujoco/mujoco210/bin:/usr/lib/nvidia`
+3. Install `mujoco_py` via `pip install -U 'mujoco-py<2.2,>=2.1'` (tested with mujoco_py==2.1.2.14)
 
 ## Results
 
