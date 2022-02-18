@@ -6,6 +6,7 @@ from simulation_envs.ant_v3_mujoco_2 import AntEnvMujoco2
 
 # Importing the different multiagent environments.
 from simulation_envs.quantruped_adaptor_multi_environment import QuantrupedMultiPoliciesEnv
+from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedDecentralizedGraphEnv
 from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv
 from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env
 from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleDiagonalLeg_Env
@@ -37,6 +38,8 @@ register_env("QuAntruped-v3", lambda config: TimeLimit(QuAntrupedEnv(), max_epis
 
 # Register multiagent environments (allowing individual access to individual legs).
 register_env("QuantrupedMultiEnv_Centralized", lambda config: QuantrupedMultiPoliciesEnv(config) )
+
+register_env("QuantrupedMultiEnv_Decentral_Graph", lambda config: QuantrupedDecentralizedGraphEnv(config) )
 
 register_env("QuantrupedMultiEnv_FullyDecentral", lambda config: QuantrupedFullyDecentralizedEnv(config) )
 

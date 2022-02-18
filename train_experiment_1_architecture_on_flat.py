@@ -18,6 +18,8 @@ import argparse
 # Switch between different approaches.
 parser = argparse.ArgumentParser()
 parser.add_argument("--policy_scope", required=False)
+parser.add_argument("--model", required=False, default="fc_glorot_uniform_init")
+parser.add_argument("--name", required=False, default=None)
 args = parser.parse_args()
 # Possible values: 
 #   QuantrupedMultiEnv_Centralized - single controller, global information
@@ -47,6 +49,8 @@ else:
  
 if policy_scope=="QuantrupedMultiEnv_FullyDecentral":
     from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv as QuantrupedEnv
+elif policy_scope=="QuantrupedMultiEnv_Decentral_Graph":
+    from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedDecentralizedGraphEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleNeighbor":
     from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleDiagonal":
@@ -97,7 +101,7 @@ config['num_sgd_iter'] = 10
 config['lr'] = 3e-4
 config['grad_clip']=0.5
 
-config['model']['custom_model'] = "fc_glorot_uniform_init"
+config['model']['custom_model'] = args.model #"fc_glorot_uniform_init"
 config['model']['fcnet_hiddens'] = [64, 64]
 
 #config['seed'] = round(time.time())
@@ -132,15 +136,18 @@ def on_train_result(info):
         lambda ev: ev.foreach_env( lambda env: env.update_environment_after_epoch( timesteps_res ) )) 
 config["callbacks"]={"on_train_result": on_train_result,}
 
+if args.name:
+    policy_scope = f'{policy_scope}:{args.name}'
+
 # Call tune and run (for evaluation: 10 seeds up to 20M steps; only centralized controller
 # required that much of time; decentralized controller should show very good results 
 # after 5M steps.
 analysis = tune.run(
-      "PPO",
-      name=("HF_10_" + policy_scope),
-      num_samples=10,
-      checkpoint_at_end=True,
-      checkpoint_freq=312,
-      stop={"timesteps_total": 20000000},
-      config=config,
-  )
+    "PPO",
+    name=("HF_10_" + policy_scope),
+    num_samples=10,
+    checkpoint_at_end=True,
+    checkpoint_freq=312,
+    stop={"timesteps_total": 20000000},
+    config=config,
+)
