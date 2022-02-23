@@ -4,9 +4,8 @@ from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.utils.framework import get_activation_fn, try_import_tf
 
 from models.glorot_uniform_scaled_initializer import GlorotUniformScaled
-import os
-#from models.gcn import GCN
-#from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedDecentralizedGraphEnv
+from models.gcn import GCN
+
 
 tf1, tf, tfv = try_import_tf()
 
@@ -28,14 +27,13 @@ class FullyConnectedNetwork_SharedGNN_GlorotUniformInitializer(TFModelV2):
         no_final_linear = model_config.get("no_final_linear")
         vf_share_layers = model_config.get("vf_share_layers")
         free_log_std = model_config.get("free_log_std")
-        #edge_index = tf.constant(QuantrupedDecentralizedGraphEnv.get_edge_index())
 
-        self_node_id_space, obs_space = obs_space.original_space
+        self_node_id_space, obs_space, adj_space = obs_space.original_space
 
-        #if SHARED_GNN is None:
-        #    in_feats = obs_space.shape[-1]
-        #    out_feats = model_config.get("fcnet_hiddens", [64])[0]
-        #    SHARED_GNN = GCN(out_feats, activation=activation, use_bias=True)
+        if SHARED_GNN is None:
+            in_feats = obs_space.shape[-1]
+            out_feats = model_config.get("fcnet_hiddens", [64])[0]
+            SHARED_GNN = GCN(out_feats, activation=activation, use_bias=True)
 
         # Generate free-floating bias variables for the second half of
         # the outputs.
@@ -59,26 +57,27 @@ class FullyConnectedNetwork_SharedGNN_GlorotUniformInitializer(TFModelV2):
             dtype=np.float32, #obs_space.dtype,
             name="observations")
 
+        # Input of the leg observation
+        adj_input = tf.keras.layers.Input(
+            shape=adj_space.shape,
+            dtype=np.float32, #obs_space.dtype,
+            name="adj_input")
+
         # gather the correct observation, i.e. use the leg id
         # to access the corresponding feature vector
         gather = tf.keras.layers.Lambda(
             lambda x: tf.gather(x[0], tf.reshape(x[1], [-1]), 
                 axis=1, batch_dims=1))
-        local_features = gather((inputs, node_id_input))
 
-        #append_leg_id = tf.keras.layers.Lambda(lambda x: tf.concat((
-        #    tf.repeat(
-        #        tf.one_hot(tf.range(4), depth=4)[tf.newaxis], 
-        #        tf.shape(x)[0],
-        #        axis=0), x), 
-        #    axis=-1))(inputs)
-        #graph_messages = SHARED_GNN(inputs, edge_index)
-        #graph_message = gather((graph_messages, node_id_input))
+        # compute message passing on the body graph
+        graph_messages = SHARED_GNN(inputs, adj_input)
+        # concat the messages to the local input features
+        last_layer = tf.keras.layers.Concatenate(axis=-1)([inputs, graph_messages])
+        # gather the entry for the leg that is controled
+        leg_controller_inputs = gather((inputs, node_id_input))
+        last_layer = leg_controller_inputs
 
-        # Last hidden layer output (before logits outputs).
-        #last_layer = tf.keras.layers.Concatenate(axis=-1)([local_features, graph_message])
-        last_layer = local_features
-        #last_layer = local_features
+
         # The action distribution outputs.
         logits_out = None
         i = 1
@@ -127,14 +126,14 @@ class FullyConnectedNetwork_SharedGNN_GlorotUniformInitializer(TFModelV2):
                 return tf.tile(
                     tf.expand_dims(self.log_std_var, 0), [tf.shape(x)[0], 1])
 
-            log_std_out = tf.keras.layers.Lambda(tiled_log_std)(local_features)
+            log_std_out = tf.keras.layers.Lambda(tiled_log_std)(leg_controller_inputs)
             logits_out = tf.keras.layers.Concatenate(axis=1)(
                 [logits_out, log_std_out])
 
         last_vf_layer = None
         if not vf_share_layers:
             # Build a parallel set of hidden layers for the value net.
-            last_vf_layer = local_features
+            last_vf_layer = leg_controller_inputs
             i = 1
             for size in hiddens:
                 last_vf_layer = tf.keras.layers.Dense(
@@ -152,17 +151,15 @@ class FullyConnectedNetwork_SharedGNN_GlorotUniformInitializer(TFModelV2):
                 last_vf_layer if last_vf_layer is not None else last_layer)
 
         self.base_model = tf.keras.Model(
-            (node_id_input, inputs), [(logits_out
+            (node_id_input, inputs, adj_input), [(logits_out
                       if logits_out is not None else last_layer), value_out])
 
         self.name = name
         self.register_variables(self.base_model.variables)
-        #self.register_variables(SHARED_GNN)
+        self.register_variables(SHARED_GNN.variables)
 
     def forward(self, input_dict, state, seq_lens):
-        #logging.info(input_dict["obs"])
         model_out, self._value_out = self.base_model(input_dict["obs"])
-
         return model_out, state
 
     def value_function(self):

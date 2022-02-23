@@ -94,7 +94,7 @@ config['clip_param'] = 0.2
 config['vf_loss_coeff'] = 0.5
 #config['vf_clip_param'] = 4000.
 
-config['observation_filter'] = 'MeanStdFilter'
+config['observation_filter'] = 'NoFilter' #'MeanStdFilter'
 
 config['sgd_minibatch_size'] = 128
 config['num_sgd_iter'] = 10

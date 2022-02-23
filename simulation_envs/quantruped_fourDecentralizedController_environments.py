@@ -1,5 +1,6 @@
 import gym
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from ray.rllib.utils.filter import MeanStdFilter
 import numpy as np
 import mujoco_py
 from gym import spaces
@@ -124,12 +125,12 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
         self.obs_indices["policy_HL"] = [0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
         self.obs_indices["policy_HR"] = [0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42]
         self.obs_indices["policy_FR"] = [0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
-        #self.std_scaler = MeanStdFilter((len(self.policy_names), len(self.obs_indices["policy_FL"])))
+        self.std_scaler = MeanStdFilter((len(self.policy_names), len(self.obs_indices["policy_FL"])))
+        self.adj = self.create_adj()
         super().__init__(config)
 
-    @staticmethod
-    def get_edge_index():
-        policy_idx = list(QuantrupedDecentralizedGraphEnv.obs_indices.keys())
+    def create_edge_index(self):
+        policy_idx = list(self.obs_indices.keys())
         get_node_idx = lambda policy_name: policy_idx.index(policy_name)
         make_edge = lambda sender, receiver: [get_node_idx(sender), get_node_idx(receiver)]
         # create bidirectional edge index
@@ -143,22 +144,28 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
                 make_edge("policy_FR", "policy_HR"),
                 make_edge("policy_FL", "policy_FR")]
 
+    def create_adj(self):
+        edge_index = self.create_edge_index()
+        adj = np.zeros([4, 4], dtype=np.float64)
+        adj[(*np.transpose(edge_index),)] = 1.
+        return adj
 
     @staticmethod
     def return_policies(obs_space):
         # For each agent the policy interface has to be defined.
-        #obs_space = spaces.Box(-np.inf, np.inf, (19,), np.float64)
+        index_space = spaces.MultiDiscrete([4])
         obs_space = spaces.Box(-np.inf, np.inf, (4, 19,), np.float64)
-        obs_space = spaces.Tuple([spaces.MultiDiscrete([obs_space.shape[0]]), obs_space])
+        adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
+        graph_space = spaces.Tuple([index_space, obs_space, adj_space])
         policies = {
             QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
         }
         return policies
 
@@ -170,14 +177,14 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
         obs_distributed = {}
         policy_idx = list(self.obs_indices.keys())
         graph_observation = np.stack([ obs_full[self.obs_indices[p_idx]] for p_idx in policy_idx ])
-        #graph_observation = self.std_scaler(graph_observation)
-        for policy_name in self.policy_names:
-            #obs_distributed[policy_name] = graph_observation.astype(np.float64)[policy_idx.index(policy_name)]
-            obs_distributed[policy_name] = (np.array([policy_idx.index(policy_name)]), 
-                                            graph_observation.astype(obs_full.dtype))
+        graph_observation = self.std_scaler(graph_observation)
 
-        #for policy_name in self.policy_names:
-        #    obs_distributed[policy_name + '_TRUE'] = obs_full[self.obs_indices[policy_name],]
+        for policy_name in self.policy_names:
+            obs_distributed[policy_name] = (
+                np.array([policy_idx.index(policy_name)]), 
+                graph_observation.astype(obs_full.dtype), 
+                self.adj
+            )
 
         return obs_distributed
 
