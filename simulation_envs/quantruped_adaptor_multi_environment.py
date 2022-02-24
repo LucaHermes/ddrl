@@ -52,7 +52,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         mujoco_py.functions.mj_setTotalmass(self.env.model, 10. * ant_mass)
         
         
-        
+        self.normalize_rewards = config['norm_rew']
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         
@@ -118,9 +118,14 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         rew = {}    
         contact_costs = self.distribute_contact_cost()  
         for policy_name in self.policy_names:
-            rew[policy_name] = fw_reward / len(self.policy_names) \
-                - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
-                - contact_costs[policy_name]
+            if self.normalize_rewards:
+                rew[policy_name] = fw_reward - len(self.policy_names) \
+                    * (self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
+                    + contact_costs[policy_name])
+            else:
+                rew[policy_name] = fw_reward / len(self.policy_names) \
+                    - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
+                    - contact_costs[policy_name]
         return rew
         
     def concatenate_actions(self, action_dict):

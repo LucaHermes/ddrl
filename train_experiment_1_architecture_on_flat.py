@@ -20,6 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--policy_scope", required=False)
 parser.add_argument("--model", required=False, default="fc_glorot_uniform_init")
 parser.add_argument("--name", required=False, default=None)
+parser.add_argument("--norm_rew", action='store_true', default=False)
 args = parser.parse_args()
 # Possible values: 
 #   QuantrupedMultiEnv_Centralized - single controller, global information
@@ -118,6 +119,7 @@ config["multiagent"] = {
 
 config['env_config']['ctrl_cost_weight'] = 0.5#grid_search([5e-4,5e-3,5e-2])
 config['env_config']['contact_cost_weight'] =  5e-2 #grid_search([5e-4,5e-3,5e-2])
+config['env_config']['norm_rew'] = args.norm_rew
 
 # Parameters for defining environment:
 # Heightfield smoothness (between 0.6 and 1.0 are OK)
@@ -139,12 +141,14 @@ config["callbacks"]={"on_train_result": on_train_result,}
 if args.name:
     policy_scope = f'{policy_scope}:{args.name}'
 
+run_prefix = 'HF_10_' if not args.norm_rew else 'NormRew_'
+
 # Call tune and run (for evaluation: 10 seeds up to 20M steps; only centralized controller
 # required that much of time; decentralized controller should show very good results 
 # after 5M steps.
 analysis = tune.run(
     "PPO",
-    name=("HF_10_" + policy_scope),
+    name=(run_prefix + policy_scope),
     num_samples=10,
     checkpoint_at_end=True,
     checkpoint_freq=312,

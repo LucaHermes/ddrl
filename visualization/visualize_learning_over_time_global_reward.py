@@ -32,17 +32,12 @@ plt.rcParams['pdf.fonttype'] = 42
 # matplotlib.rcParams['ps.fonttype'] = 42
 
 # Important: requires detailed logs of results (not part of the git).
-exp_path = [os.getcwd() + '/results_1_global_reward/HF_10_QuantrupedMultiEnv_Centralized', #results_1_global_reward/GR_QuantrupedMultiEnv_Centralized',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_FullyDecentral',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_Local',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_SingleDiagonal',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_SingleNeighbor',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_SingleToFront',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_TwoDiags',
-    os.getcwd() + '/results_1_global_reward/GR_QuantrupedMultiEnv_TwoSides',
-    os.getcwd() + '/results_1_global_reward/HF_10_QuantrupedMultiEnv_FullyDecentral',   
-    os.getcwd() + '/results_1_global_reward/HF_10_QuantrupedMultiEnv_Local',
-    os.getcwd() + '/results_1_global_reward/HF_10_QuantrupedMultiEnv_TwoSides']
+#exp_path = [os.getcwd() + '/results_1_global_reward/HF_10_QuantrupedMultiEnv_Centralized', #results_1_global_reward/GR_QuantrupedMultiEnv_Centralized',
+exp_path = [os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Centralized', 
+             os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_FullyDecentral', 
+             os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Local', 
+             os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Decentral_Graph:1-Layer-GCN', 
+             os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Decentral_Graph:NoGCN', ]
    
 experiment_dirs = [[os.path.join(exp_path_item,dI) for dI in os.listdir(exp_path_item) if os.path.isdir(os.path.join(exp_path_item,dI))] for exp_path_item in exp_path]
 
@@ -76,7 +71,7 @@ ax_arch.spines["right"].set_visible(False)
 ax_arch.set_xlim(0, 2e7)
 #ax_arch.set_ylim(0, 800)  
 
-for i in range(0, 8):
+for i in range(0, 5):
     # Use matplotlib's fill_between() call to create error bars.   
     plt.fill_between(time_steps, all_exp_data[i][2],  
                      all_exp_data[i][3], color=tableau20[i*2 + 1], alpha=0.25)  
@@ -85,9 +80,11 @@ for i in range(0, 8):
     print(exp_path[i].split('_')[-1], f' && {all_exp_data[i][0][311]:.2f} & ({all_exp_data[i][1][311]:.2f}) && {all_exp_data[i][0][624]:.2f} & ({all_exp_data[i][1][624]:.2f}) && {all_exp_data[i][0][1249]:.2f} & ({all_exp_data[i][1][1249]:.2f})')
 ax_arch.set_xlabel('timesteps', fontsize=14)
 ax_arch.set_ylabel('Return per Episode', fontsize=14)
+plt.legend()
 #plt.plot([0,500], [200,200], color=tableau20[6], linestyle='--')
 #plt.legend(loc="lower right")
 
+'''
 # Plotting: Compare global reward - reward decomposition
 fig_comp = plt.figure(figsize=(12, 8))
 # Remove the plot frame lines. They are unnecessary chartjunk.  
@@ -114,6 +111,7 @@ plt.plot(time_steps, all_exp_data[9][0], color=tableau20[4], lw=1)
 plt.plot(time_steps, all_exp_data[7][0], color=tableau20[14], lw=1, linestyle='--')
 plt.plot(time_steps, all_exp_data[10][0], color=tableau20[14], lw=1)
 #print(exp_path[i].split('_')[-1], f' && {all_exp_data[i][0][311]:.2f} & ({all_exp_data[i][1][311]:.2f}) && {all_exp_data[i][0][624]:.2f} & ({all_exp_data[i][1][624]:.2f}) && {all_exp_data[i][0][1249]:.2f} & ({all_exp_data[i][1][1249]:.2f})')
+'''
 ax_arch.set_xlabel('timesteps', fontsize=14)
 ax_arch.set_ylabel('Return per Episode', fontsize=14)
 

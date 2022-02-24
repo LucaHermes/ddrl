@@ -17,6 +17,8 @@ from simulation_envs.quantruped_twoDecentralizedController_environments import Q
 
 from simulation_envs.quantruped_fourDecentralizedController_GlobalCosts_environments import QuantrupedFullyDecentralizedGlobalCostEnv
 
+from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv
+
 # Register Gym environment. 
 register(
 	id='QuAntruped-v3',
@@ -51,3 +53,5 @@ register_env("QuantrupedMultiEnv_SingleToFront", lambda config: Quantruped_Local
 register_env("QuantrupedMultiEnv_Local", lambda config: Quantruped_Local_Env(config) )
 register_env("QuantrupedMultiEnv_TwoSides", lambda config: Quantruped_TwoSideControllers_Env(config) )
 register_env("QuantrupedMultiEnv_TwoDiags", lambda config: Quantruped_TwoDiagControllers_Env(config) )
+
+register_env('QuantrupedMultiEnv_SharedDecentral', lambda config: QuantrupedSingleDecentralizedEnv(config) )

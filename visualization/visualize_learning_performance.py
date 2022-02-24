@@ -42,11 +42,14 @@ plt.rcParams['pdf.fonttype'] = 42
 exp_path = [os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Centralized', 
      os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_FullyDecentral', 
      os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Local', 
-     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleDiagonal', 
-     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleNeighbor', 
-     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleToFront', 
-     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_TwoDiags', 
-     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_TwoSides']
+     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Decentral_Graph:1-Layer-GCN', 
+     os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_Decentral_Graph:NoGCN', 
+     #os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleDiagonal', 
+     #os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleNeighbor', 
+     #os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_SingleToFront', 
+     #os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_TwoDiags', 
+     #os.getcwd() + '/Results/experiment_1/HF_10_QuantrupedMultiEnv_TwoSides'
+]
         
 experiment_dirs = [[os.path.join(exp_path_item,dI) for dI in os.listdir(exp_path_item) if os.path.isdir(os.path.join(exp_path_item,dI))] for exp_path_item in exp_path]
 
