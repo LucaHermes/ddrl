@@ -19,8 +19,8 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
         - policy_mapping_fn: defines names of the distributed controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
     """  
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config):
+        super().__init__(config)
         self.action_indices = {
             'policy_FL' : [2, 3],
             'policy_HL' : [4, 5],
@@ -222,9 +222,10 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
         super().__init__(config)
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (19,), np.float64)
+        n_dims = 19 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -287,11 +288,12 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
         # FR also gets local information from FL
         self.obs_indices["policy_FR"] = [0,1,2,3,4,11,12, 5, 6,13,14,15,16,17,18,25,26,19,20,33,34,27,28,35,36,37,38]
         super().__init__(config) 
-            
+        
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
+        n_dims = 27 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -352,9 +354,10 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
         super().__init__(config)
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
+        n_dims = 27 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -419,11 +422,12 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
         # FR also gets local information from HR (towards front)
         self.obs_indices["policy_FR"] = [0,1,2,3,4,11,12, 9,10,13,14,15,16,17,18,25,26,23,24,33,34,31,32,35,36,41,42]
         super().__init__(config) 
-            
+    
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
+        n_dims = 27 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             Quantruped_LocalSingleToFront_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -488,9 +492,10 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
         super().__init__(config)
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (35,), np.float64)
+        n_dims = 35 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             Quantruped_Local_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),

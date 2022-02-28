@@ -119,7 +119,7 @@ config['model']['fcnet_hiddens'] = [64, 64]
 
 # For running tune, we have to provide information on 
 # the multiagent which are part of the MultiEnvs
-policies = QuantrupedEnv.return_policies( spaces.Box(-np.inf, np.inf, (43,), np.float64) )
+policies = QuantrupedEnv.return_policies(use_target_velocity=False)
 
 config["multiagent"] = {
         "policies": policies,

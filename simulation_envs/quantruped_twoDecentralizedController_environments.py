@@ -56,7 +56,7 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
         # Each controller outputs four actions, below are the indices of the actions
         # in the action-list that gets passed to the environment.
         self.action_indices = {
-            'policy_LEFT'  : [2, 3, 4, 5]
+            'policy_LEFT'  : [2, 3, 4, 5],
             'policy_RIGHT' : [6, 7, 0, 1]
         }
         super().__init__(config)
@@ -187,13 +187,14 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
             return "policy_HLFR" 
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
+        n_dims = 27 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         policies = {
             Quantruped_TwoDiagControllers_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.,-1.,-1.]), np.array([+1.,+1.,+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., +1, (4,)), {}),
             Quantruped_TwoDiagControllers_Env.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.,-1.,-1.]), np.array([+1.,+1.,+1.,+1.])), {})
+                obs_space, spaces.Box(-1., +1, (4,)), {})
         }
         return policies

@@ -38,7 +38,11 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         self.target_velocity_list = config.get('target_velocity')
         self.use_target_velocity = self.target_velocity_list is not None
         
-        self.env = self.create_env(use_target_velocity=self.use_target_velocity)   
+        self.env = self.create_env(
+            use_target_velocity=self.use_target_velocity,
+            ctrl_cost_weight=ctrl_cost_weight,
+            contact_cost_weight=contact_cost_weight, 
+            hf_smoothness=hf_smoothness)   
         
         ant_mass = mujoco_py.functions.mj_getTotalmass(self.env.model)
         mujoco_py.functions.mj_setTotalmass(self.env.model, 10. * ant_mass)
@@ -73,15 +77,12 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         if 'range_last_timestep' in config.keys():
             self.curriculum_last_timestep = config['range_last_timestep']
 
-    def create_env(self, use_target_velocity=False):
+    def create_env(self, use_target_velocity=False, **env_args):
         if use_target_velocity:
             env = "QuAntrupedTvel-v3" 
         else:
             env = "QuAntruped-v3"
-        return gym.make(env, 
-            ctrl_cost_weight=ctrl_cost_weight,
-            contact_cost_weight=contact_cost_weight, 
-            hf_smoothness=hf_smoothness)
+        return gym.make(env, **env_args)
 
     def update_environment_after_epoch(self, timesteps_total):
         """

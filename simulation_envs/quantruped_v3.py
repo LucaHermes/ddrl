@@ -161,7 +161,7 @@ class QuAntrupedEnv(AntEnv):
         ctrl_cost = self.control_cost(action)
         contact_cost = self.contact_cost
 
-        forward_reward = self.compute_forward_reward()
+        forward_reward = self.compute_forward_reward(x_velocity)
         healthy_reward = self.healthy_reward
 
         rewards = forward_reward + healthy_reward
