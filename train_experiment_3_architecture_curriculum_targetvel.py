@@ -10,7 +10,7 @@ from ray import tune
 from ray.tune import grid_search
 import time
 
-import target_envs
+import simulation_envs
 import models
 
 import argparse
@@ -34,13 +34,13 @@ else:
     policy_scope = 'QuantrupedMultiEnv_Centralized_TVel'
  
 if policy_scope=="QuantrupedMultiEnv_Local_TVel":
-    from target_envs.quantruped_fourDecentralizedController_environments import Quantruped_Local_TVel_Env as QuantrupedEnv
+    from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_Local_Env as QuantrupedEnv
 elif  policy_scope=="QuantrupedMultiEnv_FullyDecentral_TVel":
-    from target_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralized_TVel_Env as QuantrupedEnv
+    from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_TwoSides_TVel":
-    from target_envs.quantruped_twoDecentralizedController_environments import Quantruped_TwoSideControllers_TVel_Env as QuantrupedEnv
+    from simulation_envs.quantruped_twoDecentralizedController_environments import Quantruped_TwoSideControllers_Env as QuantrupedEnv
 else:
-    from target_envs.quantruped_centralizedController_environment import Quantruped_Centralized_TVel_Env as QuantrupedEnv
+    from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
 #ray.init(num_cpus=6, ignore_reinit_error=True)
 ray.init(ignore_reinit_error=True)
@@ -82,7 +82,7 @@ config['model']['fcnet_hiddens'] = [64, 64]
 
 # For running tune, we have to provide information on 
 # the multiagent which are part of the MultiEnvs
-policies = QuantrupedEnv.return_policies()
+policies = QuantrupedEnv.return_policies(use_target_velocity=True)
 
 config["multiagent"] = {
         "policies": policies,

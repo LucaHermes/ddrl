@@ -92,12 +92,8 @@ class QuAntrupedEnv(AntEnv):
         'hl_hip_hist_ctrl', 'hl_knee_vel_hist_ctrl', 
         'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl'
     ]
-    OBS_FIELDS
 
     def __init__(self, ctrl_cost_weight=0.5, contact_cost_weight=5e-4, healthy_reward=0., hf_smoothness=1.):
-        # Agent is rewarded for reaching a given target velocity.
-        self.target_vel = None#np.array([1.]) 
-        
         # Some statistics collected during running, for debugging.
         self.start_pos = None
         self.step_counter = 0
@@ -135,13 +131,6 @@ class QuAntrupedEnv(AntEnv):
         self.sum_rewards = 0.
         self.ctrl_costs = 0.
         return obs
-
-    def set_target_velocity(self, t_vel):
-        if self.target_vel is None:
-            # target velocity has never been set
-            # append target velocity as last index of the observation
-            self.OBS_FIELDS.append('body_target_x_vel')
-        self.target_vel = np.array([t_vel])
   
     def create_new_random_hfield(self):
         create_new_hfield(self.model, self.hf_smoothness, self.hf_bump_scale)
@@ -181,7 +170,7 @@ class QuAntrupedEnv(AntEnv):
             distance = (self.sim.data.qpos[0] - self.start_pos)# / (self.step_counter * self.dt)
             print("Quantruped episode: ", distance, " / vel: : ",\
                 (distance/ (self.step_counter * self.dt)), \
-                x_velocity, self.target_vel, self.vel_rewards, \
+                x_velocity, self.vel_rewards, \
                 " / ctrl: ", self.ctrl_costs, " / sum rew: ", self.sum_rewards, self.step_counter)
         
         observation = self._get_obs()
@@ -249,9 +238,6 @@ class QuAntrupedEnv(AntEnv):
             position = position[2:]
 
         observations = np.concatenate((position, velocity, joint_sensor_forces, last_control))#, last_control)) #, contact_force))
-
-        if self.target_vel:
-            observations = np.concatenate((observations, self.target_vel))
 
         return observations
     
@@ -339,6 +325,13 @@ class QuAntrupedTVelEnv(QuAntrupedEnv):
   
     def compute_forward_reward(self, x_velocity):
         return (1. + 1./self.target_vel[0]) * (1. / (np.abs(x_velocity - self.target_vel[0]) + 1.) - 1. / (self.target_vel[0] + 1.))
+
+    def set_target_velocity(self, t_vel):
+        if self.target_vel is None:
+            # target velocity has never been set
+            # append target velocity as last index of the observation
+            self.OBS_FIELDS.append('body_target_x_vel')
+        self.target_vel = np.array([t_vel])
 
     def _get_obs(self):
         observations = super()._get_obs()#, last_control)) #, contact_force))
