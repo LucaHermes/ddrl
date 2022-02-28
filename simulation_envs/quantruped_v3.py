@@ -93,6 +93,13 @@ class QuAntrupedEnv(AntEnv):
         'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl'
     ]
 
+    ACTION_FIELDS = [
+        'fr_hip', 'fr_knee',
+        'fl_hip', 'fl_knee',
+        'hl_hip', 'hl_knee',
+        'hr_hip', 'hr_knee',
+    ]
+
     def __init__(self, ctrl_cost_weight=0.5, contact_cost_weight=5e-4, healthy_reward=0., hf_smoothness=1.):
         # Some statistics collected during running, for debugging.
         self.start_pos = None
@@ -263,13 +270,30 @@ class QuAntrupedEnv(AntEnv):
 
         # if no prefixes are given, pass an array with all indices.
         if prefixes is None:
-            return np.arange(self.OBS_FIELDS)
+            return np.arange(len(self.OBS_FIELDS))
 
         # this respects the ordering as is in prefixes, e.g.
         # if prefixes = ['body', 'hl'], the first indices of an observation
         # are populated with body features and the last with left-hindleg features. 
         for prefix in prefixes:
             idx = [ f.startswith(prefix) for f in self.OBS_FIELDS ]
+            obs_indices.extend(list(np.where(idx)[0]))
+
+        return obs_indices
+
+    def get_action_indices(self, prefixes=None):
+        '''
+        Returns the indices for the actions starting with one of the
+        given prefixes.
+        '''
+        obs_indices = []
+
+        # if no prefixes are given, pass an array with all indices.
+        if prefixes is None:
+            return np.arange(len(self.ACTION_FIELDS))
+
+        for prefix in prefixes:
+            idx = [ f.startswith(prefix) for f in self.ACTION_FIELDS ]
             obs_indices.extend(list(np.where(idx)[0]))
 
         return obs_indices

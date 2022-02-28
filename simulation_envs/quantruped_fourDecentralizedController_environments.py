@@ -22,10 +22,10 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
     def __init__(self, config):
         super().__init__(config)
         self.action_indices = {
-            'policy_FL' : [2, 3],
-            'policy_HL' : [4, 5],
-            'policy_HR' : [6, 7],
-            'policy_FR' : [0, 1],
+            'policy_FL' : self.env.get_action_indices(['fl']), #[2, 3]
+            'policy_HL' : self.env.get_action_indices(['hl']), #[4, 5]
+            'policy_HR' : self.env.get_action_indices(['hr']), #[6, 7],
+            'policy_FR' : self.env.get_action_indices(['fr']), #[0, 1]
         }
 
     def distribute_contact_cost(self):

@@ -50,7 +50,7 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         # The central policy gets all observations
         self.obs_indices["central_policy"] = self.env.get_obs_indices() # all observations
         self.action_indices = {
-            "central_policy" : range(8)
+            "central_policy" : self.env.get_action_indices()
         }
         
     @staticmethod

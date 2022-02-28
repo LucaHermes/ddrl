@@ -57,8 +57,8 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
         # Each controller outputs four actions, below are the indices of the actions
         # in the action-list that gets passed to the environment.
         self.action_indices = {
-            'policy_LEFT'  : [2, 3, 4, 5],
-            'policy_RIGHT' : [6, 7, 0, 1]
+            'policy_LEFT'  : self.env.get_action_indices(['fl', 'hl']), #[2, 3, 4, 5],
+            'policy_RIGHT' : self.env.get_action_indices(['hr', 'fr']), #[6, 7, 0, 1],
         }
         # Each controller only gets information from that body side: Left
         self.obs_indices["policy_LEFT"]  = self.env.get_obs_indices(['body', 'fl', 'hl'])
@@ -149,15 +149,11 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
         # 35: hip FR angle, 36: knee FR angle
         # Each controller outputs four actions, below are the indices of the actions
         # in the action-list that gets passed to the environment.
-        self.action_indices = {
-            'policy_FLHR' : [2, 3, 4, 5],
-            'policy_HLFR' : [6, 7, 0, 1],
-        }
         super().__init__(config)
         # TODO: Ask Malte, i think this one is correct
         self.action_indices = {
-            'policy_FLHR' : [2, 3, 6, 7],
-            'policy_HLFR' : [4, 5, 0, 1],
+            'policy_FLHR' : self.env.get_action_indices(['fl', 'hr']), #[2, 3, 6, 7],
+            'policy_HLFR' : self.env.get_action_indices(['hl', 'fr']), #[4, 5, 0, 1],
         }
         # Each controller only gets information from two legs, diagonally arranged: FL-HR
         self.obs_indices["policy_FLHR"] = self.env.get_obs_indices(['body', 'fl', 'hr'])
