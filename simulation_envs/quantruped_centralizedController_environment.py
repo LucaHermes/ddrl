@@ -48,8 +48,10 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         # 41: hip HR angle, 42: knee HR angle
         # 35: hip FR angle, 36: knee FR angle
         # The central policy gets all observations
-        self.obs_indices["central_policy"] = range(len(self.env.OBS_IDX)) # all observations
-        self.action_indices["central_policy"] = range(8)
+        self.obs_indices["central_policy"] = self.env.get_obs_indices() # all observations
+        self.action_indices = {
+            "central_policy" : range(8)
+        }
         
     @staticmethod
     def policy_mapping_fn(agent_id):

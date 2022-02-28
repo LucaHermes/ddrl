@@ -49,17 +49,17 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
         # 39: hip HL angle, 40: knee HL angle
         # 41: hip HR angle, 42: knee HR angle
         # 35: hip FR angle, 36: knee FR angle
-        self.obs_indices["policy_FL"] = [0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
-        self.obs_indices["policy_HL"] = [0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
-        self.obs_indices["policy_HR"] = [0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42]
-        self.obs_indices["policy_FR"] = [0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
+        super().__init__(config)
         self.action_indices = {
             'policy_FL' : [2, 3],
             'policy_HL' : [4, 5],
             'policy_HR' : [6, 7],
             'policy_FR' : [0, 1],
         }
-        super().__init__(config)
+        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl'])
+        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl'])
+        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr'])
+        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr'])
         
     def distribute_contact_cost(self):
         contact_cost = {}

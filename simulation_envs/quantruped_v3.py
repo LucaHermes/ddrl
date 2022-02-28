@@ -64,7 +64,7 @@ class QuAntrupedEnv(AntEnv):
         called, ideally before a reset of the system).
     """ 
 
-    OBS_IDX = [ 
+    OBS_FIELDS = [ 
         'body_height',                     # Index 0-4
         'body_qpos_x', 'body_qpos_y',
         'body_qpos_z', 'body_qpos_w',
@@ -92,6 +92,7 @@ class QuAntrupedEnv(AntEnv):
         'hl_hip_hist_ctrl', 'hl_knee_vel_hist_ctrl', 
         'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl'
     ]
+    OBS_FIELDS
 
     def __init__(self, ctrl_cost_weight=0.5, contact_cost_weight=5e-4, healthy_reward=0., hf_smoothness=1.):
         # Agent is rewarded for reaching a given target velocity.
@@ -124,7 +125,7 @@ class QuAntrupedEnv(AntEnv):
 
     @classmethod
     def observation_space(cls):
-        return spaces.Box(-np.inf, np.inf, (len(cls.OBS_IDX),), np.float64)
+        return spaces.Box(-np.inf, np.inf, (len(cls.OBS_FIELDS),), np.float64)
 
     def reset(self):
         obs = super().reset()
@@ -139,7 +140,7 @@ class QuAntrupedEnv(AntEnv):
         if self.target_vel is None:
             # target velocity has never been set
             # append target velocity as last index of the observation
-            self.OBS_IDX.append('body_target_x_vel')
+            self.OBS_FIELDS.append('body_target_x_vel')
         self.target_vel = np.array([t_vel])
   
     def create_new_random_hfield(self):
@@ -267,6 +268,26 @@ class QuAntrupedEnv(AntEnv):
             else:
                 setattr(self.viewer.cam, key, value)
 
+    def get_obs_indices(self, prefixes=None):
+        '''
+        Returns the indices for the observations starting with one of the
+        given prefixes.
+        '''
+        obs_indices = []
+
+        # if no prefixes are given, pass an array with all indices.
+        if prefixes is None:
+            return np.arange(self.OBS_FIELDS)
+
+        # this respects the ordering as is in prefixes, e.g.
+        # if prefixes = ['body', 'hl'], the first indices of an observation
+        # are populated with body features and the last with left-hindleg features. 
+        for prefix in prefixes:
+            idx = [ f.startswith(prefix) for f in self.OBS_FIELDS ]
+            obs_indices.extend(list(np.where(idx)[0]))
+
+        return obs_indices
+
 
 class QuAntrupedTVelEnv(QuAntrupedEnv):
     """ Environment with a quadruped walker - derived from the ant_v3 environment
@@ -279,8 +300,9 @@ class QuAntrupedTVelEnv(QuAntrupedEnv):
         called, ideally before a reset of the system).
     """ 
 
-    OBS_IDX = [ 
+    OBS_FIELDS = [ 
         'body_height',                     # Index 0-4
+
         'body_qpos_x', 'body_qpos_y',
         'body_qpos_z', 'body_qpos_w',
 
