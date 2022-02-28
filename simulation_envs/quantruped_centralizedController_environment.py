@@ -5,7 +5,7 @@ import mujoco_py
 from gym import spaces
 
 from simulation_envs import QuantrupedMultiPoliciesEnv
-        
+
 class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
     """ Derived environment for control of the four-legged agent.
         Allows to instantiate multiple agents for control.
@@ -15,15 +15,14 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
-        - concatenate_actions: how to integrate the control signals from the controllers
     """  
     
     # This is ordering of the policies as applied here:
     policy_names = ["central_policy"]
     
     def __init__(self, config):
+        super().__init__(config)
         self.obs_indices = {}
         # First global information: 
         # 0: height, 1-4: quaternion orientation torso
@@ -49,18 +48,8 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         # 41: hip HR angle, 42: knee HR angle
         # 35: hip FR angle, 36: knee FR angle
         # The central policy gets all observations
-        self.obs_indices["central_policy"] =  range(0,43)
-        super().__init__(config)
-
-    def distribute_observations(self, obs_full):
-        """ 
-        Construct dictionary that routes to each policy only the relevant
-        information.
-        """
-        obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name],]
-        return obs_distributed
+        self.obs_indices["central_policy"] = range(len(self.env.OBS_IDX)) # all observations
+        self.action_indices["central_policy"] = range(8)
         
     @staticmethod
     def policy_mapping_fn(agent_id):
@@ -68,10 +57,15 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         return Quantruped_Centralized_Env.policy_names[0]
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
+        n_dims = 43 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         # For each agent the policy interface has to be defined.
         policies = {
-            Quantruped_Centralized_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.,-1.,-1., -1.,-1.,-1.,-1.]), np.array([+1.,+1.,+1.,+1., +1.,+1.,+1.,+1.])), {}),
+            QuantrupedMultiPoliciesEnv.policy_names[0]: (
+                None,
+                obs_space, 
+                spaces.Box(-1., +1., (8,)), 
+                {})
         }
         return policies

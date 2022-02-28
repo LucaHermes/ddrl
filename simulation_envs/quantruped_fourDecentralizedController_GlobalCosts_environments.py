@@ -19,8 +19,6 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """   
     
     # This is ordering of the policies as applied here:
@@ -55,17 +53,13 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
         self.obs_indices["policy_HL"] = [0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
         self.obs_indices["policy_HR"] = [0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42]
         self.obs_indices["policy_FR"] = [0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
+        self.action_indices = {
+            'policy_FL' : [2, 3],
+            'policy_HL' : [4, 5],
+            'policy_HR' : [6, 7],
+            'policy_FR' : [0, 1],
+        }
         super().__init__(config)
-
-    def distribute_observations(self, obs_full):
-        """ 
-        Construct dictionary that routes to each policy only the relevant
-        local information.
-        """
-        obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name],]
-        return obs_distributed
         
     def distribute_contact_cost(self):
         contact_cost = {}
@@ -103,14 +97,6 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
                 - (self.env.ctrl_cost_weight * 0.25 * sum_control_cost) \
                 - (contact_costs[policy_name])
         return rew
-
-    def concatenate_actions(self, action_dict):
-        # Return actions in the (DIFFERENT in Mujoco) order FR - FL - HL - HR
-        actions = np.concatenate( (action_dict[self.policy_names[3]],
-            action_dict[self.policy_names[0]],
-            action_dict[self.policy_names[1]],
-            action_dict[self.policy_names[2]]) )
-        return actions
 
     @staticmethod
     def return_policies(obs_space):

@@ -4,6 +4,7 @@ import numpy as np
 import mujoco_py
 from gym import spaces
 from mujoco_py import functions
+from collections import Iterable
 
 class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     """ RLLib multiagent Environment that encapsulates a quadruped walker environment.
@@ -29,45 +30,58 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     policy_names = ["centr_A_policy"]
     
     def __init__(self, config):
-        if 'contact_cost_weight' in config.keys():
-            contact_cost_weight = config['contact_cost_weight']
-        else: 
-            contact_cost_weight = 5e-4
-            
-        if 'ctrl_cost_weight' in config.keys():
-            ctrl_cost_weight = config['ctrl_cost_weight']
-        else: 
-            ctrl_cost_weight = 0.5
+        contact_cost_weight = config.get('contact_cost_weight', 5e-4)
+        ctrl_cost_weight = config.get('ctrl_cost_weight', 0.5)
+        hf_smoothness = config.get('hf_smoothness', 1.)
         
-        if 'hf_smoothness' in config.keys():
-            hf_smoothness = config['hf_smoothness']
-        else: 
-            hf_smoothness = 1.
-              
-        self.env = gym.make("QuAntruped-v3", 
-            ctrl_cost_weight=ctrl_cost_weight,
-            contact_cost_weight=contact_cost_weight, hf_smoothness=hf_smoothness)
+        # default values where [1.0, 2.0]
+        self.target_velocity_list = config.get('target_velocity')
+        self.use_target_velocity = self.target_velocity_list is not None
+        
+        self.env = self.create_env(use_target_velocity=self.use_target_velocity)   
         
         ant_mass = mujoco_py.functions.mj_getTotalmass(self.env.model)
         mujoco_py.functions.mj_setTotalmass(self.env.model, 10. * ant_mass)
         
+        if self.use_target_velocity:
+            if not isinstance(self.target_velocity_list, Iterable):
+                self.target_velocity_list = [self.target_velocity_list]
+            self.env.set_target_velocity( random.choice( self.target_velocity_list ) )
         
-        self.normalize_rewards = config['norm_rew']
+        if config['global_reward']:
+            # formerly used in exp1_simulation_envs, computes a single reward value 
+            # for all policies and also includes a term for control costs
+            self.distribute_reward = self.distribute_global_reward
+        else:
+            # standard reward distribution function that computes 
+            # individual rewards per leg
+            self.distribute_reward = self.distribute_per_leg_reward
+
+        self.normalize_rewards = config['norm_reward']
+
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         
         # For curriculum learning: scale smoothness of height field linearly over time
         # Set parameter
-        if 'curriculum_learning' in config.keys(): 
-            self.curriculum_learning =  config['curriculum_learning']
-        else:
-            self.curriculum_learning = False
+        self.curriculum_learning = config.get('curriculum_learning', False)
+
         if 'range_smoothness' in config.keys():
             self.curriculum_initial_smoothness = config['range_smoothness'][0]
             self.current_smoothness = self.curriculum_initial_smoothness
             self.curriculum_target_smoothness = config['range_smoothness'][1]
         if 'range_last_timestep' in config.keys():
             self.curriculum_last_timestep = config['range_last_timestep']
+
+    def create_env(self, use_target_velocity=False):
+        if use_target_velocity:
+            env = "QuAntrupedTvel-v3" 
+        else:
+            env = "QuAntruped-v3"
+        return gym.make(env, 
+            ctrl_cost_weight=ctrl_cost_weight,
+            contact_cost_weight=contact_cost_weight, 
+            hf_smoothness=hf_smoothness)
 
     def update_environment_after_epoch(self, timesteps_total):
         """
@@ -95,11 +109,14 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         self.env.reset()
 
     def distribute_observations(self, obs_full):
-        """ Distribute observations in the multi agent environment.
+        """ 
+        Construct dictionary that routes to each policy only the relevant
+        information.
         """
-        return {
-            self.policy_names[0]: obs_full,
-        }
+        obs_distributed = {}
+        for policy_name in self.policy_names:
+            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name]]
+        return obs_distributed
     
     def distribute_contact_cost(self):
         """ Calculate contact costs and describe how to distribute them.
@@ -111,7 +128,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             np.square(contact_forces))
         return contact_cost
 
-    def distribute_reward(self, reward_full, info, action_dict):
+    def distribute_per_leg_reward(self, reward_full, info, action_dict):
         """ Describe how to distribute reward.
         """
         fw_reward = info['reward_forward']
@@ -127,14 +144,44 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
                     - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
                     - contact_costs[policy_name]
         return rew
-        
+
+
+    def get_contact_cost_sum(self):
+        """ Calculate sum of contact costs.
+        """
+        contact_cost = {}
+        raw_contact_forces = self.env.sim.data.cfrc_ext
+        contact_forces = np.clip(raw_contact_forces, -1., 1.)
+        contact_cost = self.env.contact_cost_weight * np.sum(np.square(contact_forces))
+        return contact_cost
+
+    def distribute_global_reward(self, reward_full, info, action_dict):
+        """ Describe how to distribute reward.
+        """
+        fw_reward = info['reward_forward']
+        rew = {}    
+        contact_costs_sum = self.get_contact_cost_sum()  
+        ctrl_costs_sum = 0.
+        for policy_name in self.policy_names:
+            ctrl_costs_sum += np.sum(np.square(action_dict[policy_name]))
+        for policy_name in self.policy_names:
+            rew[policy_name] = (fw_reward \
+                - self.env.ctrl_cost_weight * ctrl_costs_sum \
+                - contact_costs_sum) / len(self.policy_names)
+        return rew
+
     def concatenate_actions(self, action_dict):
         """ Collect actions from all agents and combine them for the single 
             call of the environment.
         """
-        return action_dict[self.policy_names[0]]#np.concatenate( (action_dict[self.policy_A],
-        
+        actions = np.empty(8,)
+        for k in action_dict:
+            actions[self.action_indices[k]] = action_dict[k]
+        return actions
+
     def reset(self):
+        if self.use_target_velocity:
+            self.env.set_target_velocity( random.choice( self.target_velocity_list ) )
         obs_original = self.env.reset()
         return self.distribute_observations(obs_original)
 
@@ -179,10 +226,15 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         return QuantrupedMultiPoliciesEnv.policy_names[0]
             
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
+        n_dims = 43 + use_target_velocity
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
         # For each agent the policy interface has to be defined.
         policies = {
-            QuantrupedMultiPoliciesEnv.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.,-1.,-1., -1.,-1.,-1.,-1.]), np.array([+1.,+1.,+1.,+1., +1.,+1.,+1.,+1.])), {}),
+            QuantrupedMultiPoliciesEnv.policy_names[0]: (
+                None,
+                obs_space, 
+                spaces.Box(-1., +1., (8,)), 
+                {})
         }
         return policies

@@ -11,6 +11,16 @@ DEFAULT_CAMERA_CONFIG = {
     'elevation': -20.0,
 }
 
+#TODO: Ask malte why this is USED FOR TVel runs:
+'''
+DEFAULT_CAMERA_CONFIG = {
+    'distance': 10.0,
+    'type': 1,
+     'trackbodyid': 1,
+    'elevation': -5.0,
+}
+'''
+
 def create_new_hfield(mj_model, smoothness = 0.15, bump_scale=2.):
     # Generation of the shape of the height field is taken from the dm_control suite,
     # see dm_control/suite/quadruped.py in the escape task (but we don't use the bowl shape).
@@ -53,7 +63,49 @@ class QuAntrupedEnv(AntEnv):
         the system in uneven terrain (generating new heightfields has to be explicitly
         called, ideally before a reset of the system).
     """ 
+
+    OBS_IDX = [ 
+        'body_height',                     # Index 0-4
+        'body_qpos_x', 'body_qpos_y',
+        'body_qpos_z', 'body_qpos_w',
+
+        'fl_hip', 'fl_knee',               # Index 5-12
+        'hl_hip', 'hl_knee',
+        'hr_hip', 'hr_knee',
+        'fr_hip', 'fr_knee',
+                                           # Index 13-18
+        'body_vel_x', 'body_vel_y', 'body_vel_z',
+        'body_rot_vel_x', 'body_rot_vel_y', 'body_rot_vel_z',
+
+        'fl_hip_vel', 'fl_knee_vel',       # Index 19-26
+        'hl_hip_vel', 'hl_knee_vel', 
+        'hr_hip_vel', 'hr_knee_vel',
+        'fr_hip_vel', 'fr_knee_vel', 
+
+        'fl_hip_pforce', 'fl_knee_pforce', # Index 27-34
+        'hl_hip_pforce', 'hl_knee_pforce', 
+        'hr_hip_pforce', 'hr_knee_pforce',
+        'fr_hip_pforce', 'fr_knee_pforce', 
+                                           # Index 35-42
+        'fr_hip_hist_ctrl', 'fr_knee_vel_hist_ctrl', 
+        'fl_hip_hist_ctrl', 'fl_knee_vel_hist_ctrl', 
+        'hl_hip_hist_ctrl', 'hl_knee_vel_hist_ctrl', 
+        'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl'
+    ]
+
     def __init__(self, ctrl_cost_weight=0.5, contact_cost_weight=5e-4, healthy_reward=0., hf_smoothness=1.):
+        # Agent is rewarded for reaching a given target velocity.
+        self.target_vel = None#np.array([1.]) 
+        
+        # Some statistics collected during running, for debugging.
+        self.start_pos = None
+        self.step_counter = 0
+        self.vel_rewards = 0.
+        self.sum_rewards = 0.
+        self.ctrl_costs = 0.
+        
+        self.max_steps = 1000
+        
         super().__init__(xml_file=os.path.join(os.path.dirname(__file__), 'assets','ant_hfield.xml'), ctrl_cost_weight=ctrl_cost_weight, contact_cost_weight=contact_cost_weight)
         self.ctrl_cost_weight = self._ctrl_cost_weight
         self.contact_cost_weight = self._contact_cost_weight
@@ -67,9 +119,87 @@ class QuAntrupedEnv(AntEnv):
         # This allows for more collisions.
         self.model.nconmax = 500 
         self.model.njmax = 2000
+
+        self.start_pos = self.sim.data.qpos[0].copy()
+
+    @classmethod
+    def observation_space(cls):
+        return spaces.Box(-np.inf, np.inf, (len(cls.OBS_IDX),), np.float64)
+
+    def reset(self):
+        obs = super().reset()
+        self.start_pos = self.sim.data.qpos[0] #self.get_body_com("torso")[:2].copy()
+        self.step_counter = 0
+        self.vel_rewards = 0.
+        self.sum_rewards = 0.
+        self.ctrl_costs = 0.
+        return obs
+
+    def set_target_velocity(self, t_vel):
+        if self.target_vel is None:
+            # target velocity has never been set
+            # append target velocity as last index of the observation
+            self.OBS_IDX.append('body_target_x_vel')
+        self.target_vel = np.array([t_vel])
   
     def create_new_random_hfield(self):
         create_new_hfield(self.model, self.hf_smoothness, self.hf_bump_scale)
+
+    def compute_forward_reward(self, x_velocity):
+        return x_velocity
+
+    def step(self, action):
+        xy_position_before = self.get_body_com("torso")[:2].copy()
+        # Call simulation to make a step (frame_skip steps)
+        self.do_simulation(action, self.frame_skip)
+        xy_position_after = self.get_body_com("torso")[:2].copy()
+
+        # Calculate velocity for reward.
+        xy_velocity = (xy_position_after - xy_position_before) / self.dt
+        x_velocity, y_velocity = xy_velocity
+        
+        ctrl_cost = self.control_cost(action)
+        contact_cost = self.contact_cost
+
+        forward_reward = self.compute_forward_reward()
+        healthy_reward = self.healthy_reward
+
+        rewards = forward_reward + healthy_reward
+        costs = ctrl_cost + contact_cost
+
+        reward = rewards - costs
+        done = self.done
+        
+        self.ctrl_costs += ctrl_cost
+        self.vel_rewards += forward_reward
+        self.sum_rewards += rewards
+        self.step_counter += 1
+        
+        # Print results from an episode.
+        if done or self.step_counter == self.max_steps:
+            distance = (self.sim.data.qpos[0] - self.start_pos)# / (self.step_counter * self.dt)
+            print("Quantruped episode: ", distance, " / vel: : ",\
+                (distance/ (self.step_counter * self.dt)), \
+                x_velocity, self.target_vel, self.vel_rewards, \
+                " / ctrl: ", self.ctrl_costs, " / sum rew: ", self.sum_rewards, self.step_counter)
+        
+        observation = self._get_obs()
+        info = {
+            'reward_forward': forward_reward,
+            'reward_ctrl': -ctrl_cost,
+            'reward_contact': -contact_cost,
+            'reward_survive': healthy_reward,
+
+            'x_position': xy_position_after[0],
+            'y_position': xy_position_after[1],
+            'distance_from_origin': np.linalg.norm(xy_position_after, ord=2),
+
+            'x_velocity': x_velocity,
+            'y_velocity': y_velocity,
+            'forward_reward': forward_reward,
+        }
+
+        return observation, reward, done, info
 
     def _get_obs(self):
         """ 
@@ -119,6 +249,9 @@ class QuAntrupedEnv(AntEnv):
 
         observations = np.concatenate((position, velocity, joint_sensor_forces, last_control))#, last_control)) #, contact_force))
 
+        if self.target_vel:
+            observations = np.concatenate((observations, self.target_vel))
+
         return observations
     
     def set_hf_parameter(self, smoothness, bump_scale=None):
@@ -133,3 +266,62 @@ class QuAntrupedEnv(AntEnv):
                  getattr(self.viewer.cam, key)[:] = value
             else:
                 setattr(self.viewer.cam, key, value)
+
+
+class QuAntrupedTVelEnv(QuAntrupedEnv):
+    """ Environment with a quadruped walker - derived from the ant_v3 environment
+        
+        Uses a different observation space compared to the ant environment (less inputs).
+        Per default, healthy reward is turned of (unnecessary).
+        
+        The environment introduces a heightfield which allows to test or train
+        the system in uneven terrain (generating new heightfields has to be explicitly
+        called, ideally before a reset of the system).
+    """ 
+
+    OBS_IDX = [ 
+        'body_height',                     # Index 0-4
+        'body_qpos_x', 'body_qpos_y',
+        'body_qpos_z', 'body_qpos_w',
+
+        'fl_hip', 'fl_knee',               # Index 5-12
+        'hl_hip', 'hl_knee',
+        'hr_hip', 'hr_knee',
+        'fr_hip', 'fr_knee',
+                                           # Index 13-18
+        'body_vel_x', 'body_vel_y', 'body_vel_z',
+        'body_rot_vel_x', 'body_rot_vel_y', 'body_rot_vel_z',
+
+        'fl_hip_vel', 'fl_knee_vel',       # Index 19-26
+        'hl_hip_vel', 'hl_knee_vel', 
+        'hr_hip_vel', 'hr_knee_vel',
+        'fr_hip_vel', 'fr_knee_vel', 
+
+        'fl_hip_pforce', 'fl_knee_pforce', # Index 27-34
+        'hl_hip_pforce', 'hl_knee_pforce', 
+        'hr_hip_pforce', 'hr_knee_pforce',
+        'fr_hip_pforce', 'fr_knee_pforce', 
+                                           # Index 35-42
+        'fr_hip_hist_ctrl', 'fr_knee_vel_hist_ctrl', 
+        'fl_hip_hist_ctrl', 'fl_knee_vel_hist_ctrl', 
+        'hl_hip_hist_ctrl', 'hl_knee_vel_hist_ctrl', 
+        'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl',
+                           
+        'body_target_x_vel'                # Index 43
+    ]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Agent is rewarded for reaching a given target velocity.
+        self.target_vel = None#np.array([1.])
+  
+    def compute_forward_reward(self, x_velocity):
+        return (1. + 1./self.target_vel[0]) * (1. / (np.abs(x_velocity - self.target_vel[0]) + 1.) - 1. / (self.target_vel[0] + 1.))
+
+    def _get_obs(self):
+        observations = super()._get_obs()#, last_control)) #, contact_force))
+
+        if self.target_vel:
+            observations = np.concatenate((observations, self.target_vel))
+
+        return observations

@@ -18,10 +18,20 @@ import argparse
 # Switch between different approaches.
 parser = argparse.ArgumentParser()
 parser.add_argument("--policy_scope", required=False)
-parser.add_argument("--model", required=False, default="fc_glorot_uniform_init")
+parser.add_argument("--model", required=False, default="ffn")
 parser.add_argument("--name", required=False, default=None)
-parser.add_argument("--norm_rew", action='store_true', default=False)
+parser.add_argument("--norm_reward", action='store_true', default=False)
+parser.add_argument("--global_reward", action='store_true', default=False)
+parser.add_argument("--target_velocity", required=False)
 args = parser.parse_args()
+
+use_target_velocity = 'target_velocity' in args and args.target_velocity
+
+# currently norm_reward, global_reward and use_target_velocity are mutually exclusive (should we make this independent?)
+assert not (args.norm_reward and args.global_reward)
+assert not (args.norm_reward and use_target_velocity)
+assert not (args.global_reward and use_target_velocity)
+
 # Possible values: 
 #   QuantrupedMultiEnv_Centralized - single controller, global information
 #   QuantrupedMultiEnv_FullyDecentral - four decentralized controlller, information 
@@ -119,7 +129,8 @@ config["multiagent"] = {
 
 config['env_config']['ctrl_cost_weight'] = 0.5#grid_search([5e-4,5e-3,5e-2])
 config['env_config']['contact_cost_weight'] =  5e-2 #grid_search([5e-4,5e-3,5e-2])
-config['env_config']['norm_rew'] = args.norm_rew
+config['env_config']['norm_reward'] = args.norm_reward
+config['env_config']['global_reward'] = args.global_reward
 
 # Parameters for defining environment:
 # Heightfield smoothness (between 0.6 and 1.0 are OK)
@@ -128,6 +139,10 @@ config['env_config']['hf_smoothness'] = 1.0
 config['env_config']['curriculum_learning'] =  False
 config['env_config']['range_smoothness'] =  [1., 0.6]
 config['env_config']['range_last_timestep'] =  10000000
+
+# Setting target velocity (range of up to 2.)
+if use_target_velocity: 
+    config['env_config']['target_velocity'] = float(args.target_velocity)
 
 # For curriculum learning: environment has to be updated every epoch
 def on_train_result(info):
@@ -141,7 +156,14 @@ config["callbacks"]={"on_train_result": on_train_result,}
 if args.name:
     policy_scope = f'{policy_scope}:{args.name}'
 
-run_prefix = 'HF_10_' if not args.norm_rew else 'NormRew_'
+run_prefix = 'HF_10_'
+
+if args.norm_reward:
+    run_prefix = 'NormRew_'
+if args.global_reward:
+    run_prefix = 'GR_'
+if use_target_velocity:
+    run_prefix = 'Tvel_'
 
 # Call tune and run (for evaluation: 10 seeds up to 20M steps; only centralized controller
 # required that much of time; decentralized controller should show very good results 

@@ -17,21 +17,16 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in derived classes and differs between the different architectures.
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
-        - concatenate_actions: how to integrate the control signals from the controllers
     """  
-
-    def distribute_observations(self, obs_full):
-        """ 
-        Construct dictionary that routes to each policy only the relevant
-        local information.
-        """
-        obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name],]
-        return obs_distributed
+    def __init__(self):
+        super().__init__()
+        self.action_indices = {
+            'policy_FL' : [2, 3],
+            'policy_HL' : [4, 5],
+            'policy_HR' : [6, 7],
+            'policy_FR' : [0, 1],
+        }
 
     def distribute_contact_cost(self):
         contact_cost = {}
@@ -53,14 +48,6 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
          #   sum_c += contact_cost[i]
         #print("Calculated: ", sum_c)
         return contact_cost
-        
-    def concatenate_actions(self, action_dict):
-        # Return actions in the (DIFFERENT in Mujoco) order FR - FL - HL - HR
-        actions = np.concatenate( (action_dict[self.policy_names[3]],
-            action_dict[self.policy_names[0]],
-            action_dict[self.policy_names[1]],
-            action_dict[self.policy_names[2]]) )
-        return actions
         
     @staticmethod
     def policy_mapping_fn(agent_id):
@@ -151,21 +138,22 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
         return adj
 
     @staticmethod
-    def return_policies(obs_space):
+    def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
+        n_dims = 19 + use_target_velocity
         index_space = spaces.MultiDiscrete([4])
-        obs_space = spaces.Box(-np.inf, np.inf, (4, 19,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
         adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
         graph_space = spaces.Tuple([index_space, obs_space, adj_space])
         policies = {
             QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
-                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[1]: (None,
-                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[2]: (None,
-                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[3]: (None,
-                graph_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
         }
         return policies
 
@@ -197,8 +185,6 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """ 
     
     # This is ordering of the policies as applied here:
@@ -241,13 +227,13 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
         obs_space = spaces.Box(-np.inf, np.inf, (19,), np.float64)
         policies = {
             QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             QuantrupedFullyDecentralizedEnv.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies
         
@@ -262,8 +248,6 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """ 
     
     # This is ordering of the policies as applied here:
@@ -310,13 +294,13 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
         obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
         policies = {
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies
 
@@ -331,8 +315,6 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """ 
     
     # This is ordering of the policies as applied here:
@@ -375,13 +357,13 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
         obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
         policies = {
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies
         
@@ -398,8 +380,6 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """    
     
     # This is ordering of the policies as applied here:
@@ -446,13 +426,13 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
         obs_space = spaces.Box(-np.inf, np.inf, (27,), np.float64)
         policies = {
             Quantruped_LocalSingleToFront_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleToFront_Env.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleToFront_Env.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_LocalSingleToFront_Env.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies
         
@@ -467,8 +447,6 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
-            Is defined in the obs_indices for each leg.
     """    
     
     # This is ordering of the policies as applied here:
@@ -515,12 +493,12 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
         obs_space = spaces.Box(-np.inf, np.inf, (35,), np.float64)
         policies = {
             Quantruped_Local_Env.policy_names[0]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_Local_Env.policy_names[1]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_Local_Env.policy_names[2]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
             Quantruped_Local_Env.policy_names[3]: (None,
-                obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies

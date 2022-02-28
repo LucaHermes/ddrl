@@ -11,15 +11,15 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
         Uses two different, concurrent control units (policies) 
         each instantiated as a single agent. 
         
+        Reward: If target_vel is given, is aiming for the given target velocity.
+        
         There is one controller for each side of the agent.
         Input scope of each controller: 
         - two legs of that side.
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
-        - concatenate_actions: how to integrate the control signals from the controllers
     """  
     # This is ordering of the policies as applied here:
     policy_names = ["policy_LEFT","policy_RIGHT"]
@@ -53,17 +53,13 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
         self.obs_indices["policy_LEFT"] =  [0,1,2,3,4, 5, 6, 7, 8,13,14,15,16,17,18,19,20,21,22,27,28,29,30,37,38,39,40]
         # Each controller only gets information from that body side: Right
         self.obs_indices["policy_RIGHT"] = [0,1,2,3,4, 9,10,11,12,13,14,15,16,17,18,23,24,25,26,31,32,33,34,41,42,35,36]
+        # Each controller outputs four actions, below are the indices of the actions
+        # in the action-list that gets passed to the environment.
+        self.action_indices = {
+            'policy_LEFT'  : [2, 3, 4, 5]
+            'policy_RIGHT' : [6, 7, 0, 1]
+        }
         super().__init__(config)
-
-    def distribute_observations(self, obs_full):
-        """ 
-        Construct dictionary that routes to each policy only the relevant
-        local information.
-        """
-        obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name],]
-        return obs_distributed
 
     def distribute_contact_cost(self):
         contact_cost = {}
@@ -83,14 +79,6 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
          #   sum_c += contact_cost[i]
         #print("Calculated: ", sum_c)
         return contact_cost
-        
-    def concatenate_actions(self, action_dict):
-        # Return actions in the (DIFFERENT in Mujoco) order FR - FL - HL - HR
-        actions = np.concatenate( (action_dict[self.policy_names[1]][2:],
-            action_dict[self.policy_names[0]][0:2],
-            action_dict[self.policy_names[0]][2:],
-            action_dict[self.policy_names[1]][0:2]) )
-        return actions
         
     @staticmethod
     def policy_mapping_fn(agent_id):
@@ -123,9 +111,7 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-        - distribute_observations: how to distribute observations towards these controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
-        - concatenate_actions: how to integrate the control signals from the controllers
     """ 
     
     # This is ordering of the policies as applied here:
@@ -160,17 +146,18 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
         self.obs_indices["policy_FLHR"] = [0,1,2,3,4, 5, 6, 9,10,13,14,15,16,17,18,19,20,23,24,27,28,31,32,37,38,41,42]
         # Each controller only gets information from two legs, diagonally arranged: HL-FR
         self.obs_indices["policy_HLFR"] = [0,1,2,3,4, 7, 8,11,12,13,14,15,16,17,18,21,22,25,26,29,30,33,34,39,40,35,36]
+        # Each controller outputs four actions, below are the indices of the actions
+        # in the action-list that gets passed to the environment.
+        self.action_indices = {
+            'policy_FLHR' : [2, 3, 4, 5],
+            'policy_HLFR' : [6, 7, 0, 1],
+        }
+        # TODO: Ask Malte, i think this one is correct
+        self.action_indices = {
+            'policy_FLHR' : [2, 3, 6, 7],
+            'policy_HLFR' : [4, 5, 0, 1],
+        }
         super().__init__(config)
-
-    def distribute_observations(self, obs_full):
-        """ 
-        Construct dictionary that routes to each policy only the relevant
-        local information.
-        """
-        obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name],]
-        return obs_distributed
         
     def distribute_contact_cost(self):
         contact_cost = {}
@@ -190,22 +177,6 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
          #   sum_c += contact_cost[i]
         #print("Calculated: ", sum_c)
         return contact_cost
-        
-    def concatenate_actions(self, action_dict):
-        # Return actions in the (DIFFERENT in Mujoco) order FR - FL - HL - HR
-        actions = np.concatenate( (action_dict[self.policy_names[1]][2:],
-            action_dict[self.policy_names[0]][0:2],
-            action_dict[self.policy_names[1]][0:2],
-            action_dict[self.policy_names[0]][2:]) )
-        return actions
-        
-    def concatenate_actions(self, action_dict):
-        # Return actions in the (DIFFERENT in Mujoco) order FR - FL - HL - HR
-        actions = np.concatenate( (action_dict[self.policy_names[1]][2:],
-            action_dict[self.policy_names[0]][0:2],
-            action_dict[self.policy_names[0]][2:],
-            action_dict[self.policy_names[1]][0:2]) )
-        return actions
         
     @staticmethod
     def policy_mapping_fn(agent_id):
