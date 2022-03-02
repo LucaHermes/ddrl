@@ -308,22 +308,27 @@ class QuAntrupedEnv(AntEnv):
 
         return action_indices
 
-    def get_contact_force_indices(self, prefixes=None):
+    def get_contact_force_indices(self, prefixes=None, weights=None):
         '''
         Returns the indices for the contact_forces starting with one of the
         given prefixes.
         '''
         contact_force_indices = []
+        contact_force_weights = []
 
         # if no prefixes are given, pass an array with all indices.
         if prefixes is None:
             return np.arange(len(self.CONTACT_FORCE_FIELDS))
 
-        for prefix in prefixes:
-            idx = [ f.startswith(prefix) for f in self.CONTACT_FORCE_FIELDS ]
-            contact_force_indices.extend(list(np.where(idx)[0]))
+        if weights is None:
+            weights = np.ones(len(prefixes))
 
-        return contact_force_indices
+        for prefix, weight in zip(prefixes, weights):
+            mask = [ f.startswith(prefix) for f in self.CONTACT_FORCE_FIELDS ]
+            contact_force_indices.extend(list(np.where(mask)[0]))
+            contact_force_weights.extend([weight]*len(idx))
+
+        return contact_force_indices, contact_force_weights
 
 class QuAntrupedTVelEnv(QuAntrupedEnv):
     """ Environment with a quadruped walker - derived from the ant_v3 environment

@@ -60,27 +60,12 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
         self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl'])
         self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr'])
         self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr'])
-        
-    def distribute_contact_cost(self):
-        contact_cost = {}
-        #print("CONTACT COST")
-        #from mujoco_py import functions
-        #functions.mj_rnePostConstraint(self.env.model, self.env.data)
-        #print("From Ant Env: ", self.env.contact_cost)
-        raw_contact_forces = self.env.sim.data.cfrc_ext
-        contact_forces = np.clip(raw_contact_forces, -1., 1.)
-        contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
-        global_contact_costs = np.sum(contact_costs[0:2])/4.
-        contact_cost[self.policy_names[0]] = global_contact_costs + np.sum(contact_costs[2:5])
-        contact_cost[self.policy_names[1]] = global_contact_costs + np.sum(contact_costs[5:8])
-        contact_cost[self.policy_names[2]] = global_contact_costs + np.sum(contact_costs[8:11])
-        contact_cost[self.policy_names[3]] = global_contact_costs + np.sum(contact_costs[11:])
-        #print(contact_cost)
-        #sum_c = 0.
-        #for i in self.policy_names:
-         #   sum_c += contact_cost[i]
-        #print("Calculated: ", sum_c)
-        return contact_cost
+        self.contact_force_indices = {
+            'policy_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
+            'policy_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
+            'policy_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
+            'policy_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
+        }
 
     def distribute_reward(self, reward_full, info, action_dict):
         fw_reward = info['reward_forward']

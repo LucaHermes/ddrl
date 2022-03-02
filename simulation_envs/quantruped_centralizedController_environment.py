@@ -52,6 +52,9 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         self.action_indices = {
             "central_policy" : self.env.get_action_indices()
         }
+        self.contact_force_indices = {
+            "central_policy" : self.env.get_contact_force_indices()
+        }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
