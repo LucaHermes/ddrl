@@ -17,7 +17,7 @@ from simulation_envs.quantruped_twoDecentralizedController_environments import Q
 
 from simulation_envs.quantruped_fourDecentralizedController_GlobalCosts_environments import QuantrupedFullyDecentralizedGlobalCostEnv
 
-#from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv
+from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv
 
 # Register Gym environment. 
 register(
@@ -43,16 +43,13 @@ register(
 # Register single agent ray environment (wrapping gym environment).
 register_env("Ant_Muj2-v3", lambda config: TimeLimit(AntEnvMujoco2(), max_episode_steps=1000))
 register_env("QuAntruped-v3", lambda config: TimeLimit(QuAntrupedEnv(), max_episode_steps=1000))
+register_env("QuAntrupedTVel-v3", lambda config: TimeLimit(QuAntrupedTVelEnv(), max_episode_steps=1000))
 
 # Register multiagent environments (allowing individual access to individual legs).
 register_env("QuantrupedMultiEnv_Centralized", lambda config: QuantrupedMultiPoliciesEnv(config) )
-
 register_env("QuantrupedMultiEnv_Decentral_Graph", lambda config: QuantrupedDecentralizedGraphEnv(config) )
-
 register_env("QuantrupedMultiEnv_FullyDecentral", lambda config: QuantrupedFullyDecentralizedEnv(config) )
-
 register_env("QuantrupedMultiEnv_FullyDecentralGlobalCost", lambda config: QuantrupedFullyDecentralizedGlobalCostEnv(config) )
-
 register_env("QuantrupedMultiEnv_SingleNeighbor", lambda config: Quantruped_LocalSingleNeighboringLeg_Env(config) )
 register_env("QuantrupedMultiEnv_SingleDiagonal", lambda config: Quantruped_LocalSingleDiagonalLeg_Env(config) )
 register_env("QuantrupedMultiEnv_SingleToFront", lambda config: Quantruped_LocalSingleToFront_Env(config) )
@@ -61,13 +58,3 @@ register_env("QuantrupedMultiEnv_TwoSides", lambda config: Quantruped_TwoSideCon
 register_env("QuantrupedMultiEnv_TwoDiags", lambda config: Quantruped_TwoDiagControllers_Env(config) )
 
 register_env('QuantrupedMultiEnv_SharedDecentral', lambda config: QuantrupedSingleDecentralizedEnv(config) )
-
-
-# Register single agent ray environment (wrapping gym environment).
-register_env("QuAntrupedTVel-v3", lambda config: TimeLimit(QuAntrupedTVelEnv(), max_episode_steps=1000))
-
-# Register multiagent environments (allowing individual access to individual legs).
-register_env("QuantrupedMultiEnv_Centralized_TVel", lambda config: Quantruped_Centralized_TVel_Env(config) )
-register_env("QuantrupedMultiEnv_TwoSides_TVel", lambda config: Quantruped_TwoSideControllers_TVel_Env(config) )
-register_env("QuantrupedMultiEnv_Local_TVel", lambda config: Quantruped_Local_TVel_Env(config) )
-register_env("QuantrupedMultiEnv_FullyDecentral_TVel", lambda config: QuantrupedFullyDecentralized_TVel_Env(config) )

@@ -19,45 +19,46 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedMultiPoliciesEnv):
     
     # This is ordering of the policies as applied here:
     policy_names = ['policy_FL','policy_HL','policy_HR','policy_FR']
+    agent_names = ["agent_FL","agent_HL","agent_HR","agent_FR"]
 
     def __init__(self, config):
         super().__init__(config)
         self.action_indices = {
-            'policy_FL' : self.env.get_action_indices(['fl']), #[2, 3]
-            'policy_HL' : self.env.get_action_indices(['hl']), #[4, 5]
-            'policy_HR' : self.env.get_action_indices(['hr']), #[6, 7],
-            'policy_FR' : self.env.get_action_indices(['fr']), #[0, 1]
+            'agent_FL' : self.env.get_action_indices(['fl']), #[2, 3]
+            'agent_HL' : self.env.get_action_indices(['hl']), #[4, 5]
+            'agent_HR' : self.env.get_action_indices(['hr']), #[6, 7],
+            'agent_FR' : self.env.get_action_indices(['fr']), #[0, 1]
         }
         self.contact_force_indices = {
-            'policy_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
-            'policy_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
-            'policy_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
-            'policy_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
+            'agent_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
+            'agent_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
+            'agent_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
+            'agent_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
         }
         self.obs_indices = {
-            'policy_FL' : self.env.get_obs_indices(['body', 'fl']), #[0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
-            'policy_HL' : self.env.get_obs_indices(['body', 'hl']), #[0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
-            'policy_HR' : self.env.get_obs_indices(['body', 'hr']),
-            'policy_FR' : self.env.get_obs_indices(['body', 'fr']),
+            'agent_FL' : self.env.get_obs_indices(['body', 'fl']), #[0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
+            'agent_HL' : self.env.get_obs_indices(['body', 'hl']), #[0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
+            'agent_HR' : self.env.get_obs_indices(['body', 'hr']),
+            'agent_FR' : self.env.get_obs_indices(['body', 'fr']),
         }
-        self.std_scaler = MeanStdFilter((len(self.policy_names), len(self.obs_indices['policy_FL'])))
+        self.std_scaler = MeanStdFilter((len(self.agent_names), len(self.obs_indices['agent_FL'])))
         self.adj = self.create_adj()
 
         
     @staticmethod
     def policy_mapping_fn(agent_id):
         # Each derived class has to define all agents by name.
-        if agent_id.startswith('policy_FL'):
+        if agent_id.startswith('agent_FL'):
             return 'policy_FL'
-        elif agent_id.startswith('policy_HL'):
+        elif agent_id.startswith('agent_HL'):
             return 'policy_HL'
-        elif agent_id.startswith('policy_HR'):
+        elif agent_id.startswith('agent_HR'):
             return 'policy_HR'
         else:
             return 'policy_FR'
         
     def create_edge_index(self):
-        policy_idx = list(self.obs_indices.keys())
+        policy_idx = self.policy_names
         get_node_idx = lambda policy_name: policy_idx.index(policy_name)
         make_edge = lambda sender, receiver: [get_node_idx(sender), get_node_idx(receiver)]
         # create bidirectional edge index
@@ -103,13 +104,13 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedMultiPoliciesEnv):
         local information.
         '''
         obs_distributed = {}
-        policy_idx = list(self.obs_indices.keys())
-        graph_observation = np.stack([ obs_full[self.obs_indices[p_idx]] for p_idx in policy_idx ])
+        agent_idx = list(self.obs_indices.keys())
+        graph_observation = np.stack([ obs_full[self.obs_indices[a_idx]] for a_idx in agent_idx ])
         graph_observation = self.std_scaler(graph_observation)
 
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = (
-                np.array([policy_idx.index(policy_name)]), 
+        for agent_name in self.agent_names:
+            obs_distributed[agent_name] = (
+                np.array([agent_idx.index(agent_name)]), 
                 graph_observation.astype(obs_full.dtype), 
                 self.adj
             )

@@ -15,29 +15,34 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
         - policy_mapping_fn: defines names of the distributed controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
     """  
+    
+    # This is ordering of the policies as applied here:
+    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
+    agent_names = ["agent_FL","agent_HL","agent_HR","agent_FR"]
+    
     def __init__(self, config):
         super().__init__(config)
         self.action_indices = {
-            'policy_FL' : self.env.get_action_indices(['fl']), #[2, 3]
-            'policy_HL' : self.env.get_action_indices(['hl']), #[4, 5]
-            'policy_HR' : self.env.get_action_indices(['hr']), #[6, 7],
-            'policy_FR' : self.env.get_action_indices(['fr']), #[0, 1]
+            'agent_FL' : self.env.get_action_indices(['fl']), #[2, 3]
+            'agent_HL' : self.env.get_action_indices(['hl']), #[4, 5]
+            'agent_HR' : self.env.get_action_indices(['hr']), #[6, 7],
+            'agent_FR' : self.env.get_action_indices(['fr']), #[0, 1]
         }
         self.contact_force_indices = {
-            'policy_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
-            'policy_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
-            'policy_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
-            'policy_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
+            'agent_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
+            'agent_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
+            'agent_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
+            'agent_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
         }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
         # Each derived class has to define all agents by name.
-        if agent_id.startswith("policy_FL"):
+        if agent_id.startswith("agent_FL"):
             return "policy_FL"
-        elif agent_id.startswith("policy_HL"):
+        elif agent_id.startswith("agent_HL"):
             return "policy_HL"
-        elif agent_id.startswith("policy_HR"):
+        elif agent_id.startswith("agent_HR"):
             return "policy_HR"
         else:
             return "policy_FR" 
@@ -52,9 +57,6 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
     """ 
-    
-    # This is ordering of the policies as applied here:
-    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
     
     def __init__(self, config):
         self.obs_indices = {}
@@ -82,10 +84,10 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
         # 41: hip HR angle, 42: knee HR angle
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config)
-        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl']) #[0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
-        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl']) #[0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
-        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr']) #[0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42]
-        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr']) #[0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
+        self.obs_indices["agent_FL"] = self.env.get_obs_indices(['body', 'fl']) #[0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
+        self.obs_indices["agent_HL"] = self.env.get_obs_indices(['body', 'hl']) #[0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
+        self.obs_indices["agent_HR"] = self.env.get_obs_indices(['body', 'hr']) #[0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42]
+        self.obs_indices["agent_FR"] = self.env.get_obs_indices(['body', 'fr']) #[0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
 
     @staticmethod
     def return_policies(use_target_velocity=False):
@@ -117,9 +119,6 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
         - policy_mapping_fn: defines names of the distributed controllers
     """ 
     
-    # This is ordering of the policies as applied here:
-    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
-    
     def __init__(self, config):
         self.obs_indices = {}
         # First global information: 
@@ -147,13 +146,13 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config) 
         # FL also gets local information from HL
-        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl'])
+        self.obs_indices["agent_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl'])
         # HL also gets local information from HR
-        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr'])
+        self.obs_indices["agent_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr'])
         # HR also gets local information from FR
-        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr', 'fr'])
+        self.obs_indices["agent_HR"] = self.env.get_obs_indices(['body', 'hr', 'fr'])
         # FR also gets local information from FL
-        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr', 'fl'])
+        self.obs_indices["agent_FR"] = self.env.get_obs_indices(['body', 'fr', 'fl'])
 
         
     @staticmethod
@@ -186,9 +185,6 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
         - policy_mapping_fn: defines names of the distributed controllers
     """ 
     
-    # This is ordering of the policies as applied here:
-    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
-    
     def __init__(self, config):
         self.obs_indices = {}
         # First global information: 
@@ -216,13 +212,13 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config)
         # FL also gets local information from HR
-        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl', 'hr'])
+        self.obs_indices["agent_FL"] = self.env.get_obs_indices(['body', 'fl', 'hr'])
         # HL also gets local information from FR
-        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl', 'fr'])
+        self.obs_indices["agent_HL"] = self.env.get_obs_indices(['body', 'hl', 'fr'])
         # HR gets local information like FL
-        self.obs_indices["policy_HR"] = self.obs_indices["policy_FL"]
+        self.obs_indices["agent_HR"] = self.obs_indices["agent_FL"]
         # FR gets local information from HL
-        self.obs_indices["policy_FR"] = self.obs_indices["policy_HL"]
+        self.obs_indices["agent_FR"] = self.obs_indices["agent_HL"]
             
     @staticmethod
     def return_policies(use_target_velocity=False):
@@ -256,9 +252,6 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
         - policy_mapping_fn: defines names of the distributed controllers
     """    
     
-    # This is ordering of the policies as applied here:
-    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
-    
     def __init__(self, config):
         self.obs_indices = {}
         # First global information: 
@@ -286,13 +279,13 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config)
         # FL also gets local information from HL (towards front)
-        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl'])
+        self.obs_indices["agent_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl'])
         # HL also gets local information from HR (from side at back)
-        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr'])
+        self.obs_indices["agent_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr'])
         # HR also gets local information from HL (from side at back)
-        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr', 'hl'])
+        self.obs_indices["agent_HR"] = self.env.get_obs_indices(['body', 'hr', 'hl'])
         # FR also gets local information from HR (towards front)
-        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr', 'hr'])
+        self.obs_indices["agent_FR"] = self.env.get_obs_indices(['body', 'fr', 'hr'])
     
     @staticmethod
     def return_policies(use_target_velocity=False):
@@ -322,10 +315,7 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
         
         Class defines 
         - policy_mapping_fn: defines names of the distributed controllers
-    """    
-    
-    # This is ordering of the policies as applied here:
-    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
+    """ 
     
     def __init__(self, config):
         self.obs_indices = {}
@@ -354,13 +344,13 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config)
         # FL also gets local information from HL and FR
-        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl', 'fr'])
+        self.obs_indices["agent_FL"] = self.env.get_obs_indices(['body', 'fl', 'hl', 'fr'])
         # HL also gets local information from HR and FL
-        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr', 'fl'])
+        self.obs_indices["agent_HL"] = self.env.get_obs_indices(['body', 'hl', 'hr', 'fl'])
         # HR also gets local information from FR and HL
-        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr', 'fr', 'hl'])
+        self.obs_indices["agent_HR"] = self.env.get_obs_indices(['body', 'hr', 'fr', 'hl'])
         # FR also gets local information from FL and HR
-        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr', 'fl', 'hr'])
+        self.obs_indices["agent_FR"] = self.env.get_obs_indices(['body', 'fr', 'fl', 'hr'])
             
     @staticmethod
     def return_policies(use_target_velocity=False):

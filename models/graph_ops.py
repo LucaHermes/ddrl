@@ -18,9 +18,4 @@ def adj_norm(adj):
     '''
     d_norm = tf.reduce_sum(adj, axis=-1)**-1.
     d_norm = tf.linalg.diag(d_norm)
-    print(d_norm @ adj)
     return d_norm @ adj
-
-    x_sum = tf.math.unsorted_segment_sum(x, segment_ids, num_segments=num_segments)
-    x_sum = tf.gather(x_sum, segment_ids)
-    return x / x_sum

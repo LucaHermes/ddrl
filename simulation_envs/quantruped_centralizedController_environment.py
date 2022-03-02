@@ -17,6 +17,7 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
     
     # This is ordering of the policies as applied here:
     policy_names = ["central_policy"]
+    agent_names = ["central_policy"]
     
     def __init__(self, config):
         super().__init__(config)
@@ -45,13 +46,13 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         # 35: hip FR angle, 36: knee FR angle
         # The central policy gets all observations
         self.obs_indices = {
-            "central_policy" : self.env.get_obs_indices() # all observations
+            "central_agent" : self.env.get_obs_indices() # all observations
         }
         self.action_indices = {
-            "central_policy" : self.env.get_action_indices()
+            "central_agent" : self.env.get_action_indices()
         }
         self.contact_force_indices = {
-            "central_policy" : self.env.get_contact_force_indices()
+            "central_agent" : self.env.get_contact_force_indices()
         }
         
     @staticmethod

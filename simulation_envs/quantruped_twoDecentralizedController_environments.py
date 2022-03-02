@@ -20,6 +20,7 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
     """  
     # This is ordering of the policies as applied here:
     policy_names = ["policy_LEFT","policy_RIGHT"]
+    agent_names = ["agent_LEFT","agent_RIGHT"]
     
     def __init__(self, config):
         # First global information: 
@@ -53,24 +54,24 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
         # Each controller outputs four actions, below are the indices of the actions
         # in the action-list that gets passed to the environment.
         self.action_indices = {
-            'policy_LEFT'  : self.env.get_action_indices(['fl', 'hl']), #[2, 3, 4, 5],
-            'policy_RIGHT' : self.env.get_action_indices(['hr', 'fr']), #[6, 7, 0, 1],
+            'agent_LEFT'  : self.env.get_action_indices(['fl', 'hl']), #[2, 3, 4, 5],
+            'agent_RIGHT' : self.env.get_action_indices(['hr', 'fr']), #[6, 7, 0, 1],
         }
         self.obs_indices = {
             # Each controller only gets information from that body side: Left
-            "policy_LEFT"  : self.env.get_obs_indices(['body', 'fl', 'hl']),
+            "agent_LEFT"  : self.env.get_obs_indices(['body', 'fl', 'hl']),
             # Each controller only gets information from that body side: Right
-            "policy_RIGHT" : self.env.get_obs_indices(['body', 'hr', 'fr'])
+            "agent_RIGHT" : self.env.get_obs_indices(['body', 'hr', 'fr'])
         }
         self.contact_force_indices = {
-            'policy_LEFT'  : self.env.get_contact_force_indices(['body', 'fl', 'hl'], weights=[1./2., 1., 1.]), #[2, 3]
-            'policy_RIGHT' : self.env.get_contact_force_indices(['body', 'hr', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
+            'agent_LEFT'  : self.env.get_contact_force_indices(['body', 'fl', 'hl'], weights=[1./2., 1., 1.]), #[2, 3]
+            'agent_RIGHT' : self.env.get_contact_force_indices(['body', 'hr', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
         }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
         # Each derived class has to define all agents by name.
-        if agent_id.startswith("policy_LEFT"):
+        if agent_id.startswith("agent_LEFT"):
             return "policy_LEFT"
         else:
             return "policy_RIGHT" 
@@ -104,6 +105,7 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
     
     # This is ordering of the policies as applied here:
     policy_names = ["policy_FLHR","policy_HLFR"]
+    agent_names = ["agent_FLHR","agent_HLFR"]
     
     def __init__(self, config):
         # First global information: 
@@ -134,24 +136,24 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
         super().__init__(config)
         # TODO: Ask Malte, i think this one is correct
         self.action_indices = {
-            'policy_FLHR' : self.env.get_action_indices(['fl', 'hr']), #[2, 3, 6, 7],
-            'policy_HLFR' : self.env.get_action_indices(['hl', 'fr']), #[4, 5, 0, 1],
+            'agent_FLHR' : self.env.get_action_indices(['fl', 'hr']), #[2, 3, 6, 7],
+            'agent_HLFR' : self.env.get_action_indices(['hl', 'fr']), #[4, 5, 0, 1],
         }
         self.obs_indices = {
             # Each controller only gets information from two legs, diagonally arranged: FL-HR
-            "policy_FLHR" : self.env.get_obs_indices(['body', 'fl', 'hr']),
+            "agent_FLHR" : self.env.get_obs_indices(['body', 'fl', 'hr']),
             # Each controller only gets information from two legs, diagonally arranged: HL-FR
-            "policy_HLFR" : self.env.get_obs_indices(['body', 'hl', 'fr'])
+            "agent_HLFR" : self.env.get_obs_indices(['body', 'hl', 'fr'])
         }
         self.contact_force_indices = {
-            'policy_FLHR' : self.env.get_contact_force_indices(['body', 'fl', 'hr'], weights=[1./2., 1., 1.]), #[2, 3]
-            'policy_HLFR' : self.env.get_contact_force_indices(['body', 'hl', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
+            'agent_FLHR' : self.env.get_contact_force_indices(['body', 'fl', 'hr'], weights=[1./2., 1., 1.]), #[2, 3]
+            'agent_HLFR' : self.env.get_contact_force_indices(['body', 'hl', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
         }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
         # Each derived class has to define all agents by name.
-        if agent_id.startswith("policy_FLHR"):
+        if agent_id.startswith("agent_FLHR"):
             return "policy_FLHR"
         else:
             return "policy_HLFR" 

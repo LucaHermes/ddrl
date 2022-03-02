@@ -32,6 +32,8 @@ assert not (args.norm_reward and args.global_reward)
 assert not (args.norm_reward and use_target_velocity)
 assert not (args.global_reward and use_target_velocity)
 
+obs_filter = 'MeanStdFilter'
+
 # Possible values: 
 #   QuantrupedMultiEnv_Centralized - single controller, global information
 #   QuantrupedMultiEnv_FullyDecentral - four decentralized controlller, information 
@@ -62,6 +64,7 @@ if policy_scope=="QuantrupedMultiEnv_FullyDecentral":
     from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_Decentral_Graph":
     from simulation_envs.quantruped_GraphDecentralizedController_environments import QuantrupedDecentralizedGraphEnv as QuantrupedEnv
+    obs_filter = 'NoFilter'
 elif policy_scope=="QuantrupedMultiEnv_SingleNeighbor":
     from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleDiagonal":
@@ -105,7 +108,7 @@ config['clip_param'] = 0.2
 config['vf_loss_coeff'] = 0.5
 #config['vf_clip_param'] = 4000.
 
-config['observation_filter'] = 'NoFilter' #'MeanStdFilter'
+config['observation_filter'] = obs_filter
 
 config['sgd_minibatch_size'] = 128
 config['num_sgd_iter'] = 10

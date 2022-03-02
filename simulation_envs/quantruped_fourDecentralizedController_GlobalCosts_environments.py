@@ -20,6 +20,7 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
     
     # This is ordering of the policies as applied here:
     policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
+    agent_names = ["agent_FL","agent_HL","agent_HR","agent_FR"]
     
     def __init__(self, config):
         # First global information: 
@@ -47,22 +48,22 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
         # 35: hip FR angle, 36: knee FR angle
         super().__init__(config)
         self.action_indices = {
-            'policy_FL' : self.env.get_action_indices(['fl']), #[2, 3]
-            'policy_HL' : self.env.get_action_indices(['hl']), #[4, 5]
-            'policy_HR' : self.env.get_action_indices(['hr']), #[6, 7],
-            'policy_FR' : self.env.get_action_indices(['fr']), #[0, 1]
+            'agent_FL' : self.env.get_action_indices(['fl']), #[2, 3]
+            'agent_HL' : self.env.get_action_indices(['hl']), #[4, 5]
+            'agent_HR' : self.env.get_action_indices(['hr']), #[6, 7],
+            'agent_FR' : self.env.get_action_indices(['fr']), #[0, 1]
         }
         self.obs_indices = {
-            "policy_FL" : self.env.get_obs_indices(['body', 'fl']),
-            "policy_HL" : self.env.get_obs_indices(['body', 'hl']),
-            "policy_HR" : self.env.get_obs_indices(['body', 'hr']),
-            "policy_FR" : self.env.get_obs_indices(['body', 'fr'])
+            "agent_FL" : self.env.get_obs_indices(['body', 'fl']),
+            "agent_HL" : self.env.get_obs_indices(['body', 'hl']),
+            "agent_HR" : self.env.get_obs_indices(['body', 'hr']),
+            "agent_FR" : self.env.get_obs_indices(['body', 'fr'])
         }
         self.contact_force_indices = {
-            'policy_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
-            'policy_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
-            'policy_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
-            'policy_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
+            'agent_FL' : self.env.get_contact_force_indices(['body', 'fl'], weights=[1./4., 1.]), #[2, 3]
+            'agent_HL' : self.env.get_contact_force_indices(['body', 'hl'], weights=[1./4., 1.]), #[4, 5]
+            'agent_HR' : self.env.get_contact_force_indices(['body', 'hr'], weights=[1./4., 1.]), #[6, 7],
+            'agent_FR' : self.env.get_contact_force_indices(['body', 'fr'], weights=[1./4., 1.]), #[0, 1]
         }
 
     def distribute_reward(self, reward_full, info, action_dict):
@@ -101,11 +102,11 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
     @staticmethod
     def policy_mapping_fn(agent_id):
         # Each derived class has to define all agents by name.
-        if agent_id.startswith("policy_FL"):
+        if agent_id.startswith("agent_FL"):
             return "policy_FL"
-        elif agent_id.startswith("policy_HL"):
+        elif agent_id.startswith("agent_HL"):
             return "policy_HL"
-        elif agent_id.startswith("policy_HR"):
+        elif agent_id.startswith("agent_HR"):
             return "policy_HR"
         else:
             return "policy_FR" 

@@ -51,7 +51,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
                 self.target_velocity_list = [self.target_velocity_list]
             self.env.set_target_velocity( random.choice( self.target_velocity_list ) )
         
-        if config['global_reward']:
+        if config.get('global_reward', False):
             # formerly used in exp1_simulation_envs, computes a single reward value 
             # for all policies and also includes a term for control costs
             self.distribute_reward = self.distribute_global_reward
@@ -60,7 +60,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             # individual rewards per leg
             self.distribute_reward = self.distribute_per_leg_reward
 
-        self.normalize_rewards = config['norm_reward']
+        self.normalize_rewards = config.get('norm_reward', False)
 
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
@@ -114,8 +114,8 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         information.
         """
         obs_distributed = {}
-        for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name]]
+        for agent_name in self.agent_names:
+            obs_distributed[agent_name] = obs_full[self.obs_indices[agent_name]]
         return obs_distributed
 
     def get_contact_cost_sum(self):
@@ -133,10 +133,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         contact_forces = np.clip(raw_contact_forces, -1., 1.)
         contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
 
-        for policy_name in self.policy_names:
-            idx, weights = self.contact_force_indices[policy_name]
-            policy_contacts = np.sum(np.multiply(contact_costs[idx], weights))
-            contact_cost[policy_name] = policy_contacts
+        for agent_name in self.agent_names:
+            idx, weights = self.contact_force_indices[agent_name]
+            agent_contacts = np.sum(np.multiply(contact_costs[idx], weights))
+            contact_cost[agent_name] = agent_contacts
 
         return contact_cost
 
@@ -147,12 +147,12 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         rew = {}    
         contact_costs_sum = self.get_contact_cost_sum()  
         ctrl_costs_sum = 0.
-        for policy_name in self.policy_names:
-            ctrl_costs_sum += np.sum(np.square(action_dict[policy_name]))
-        for policy_name in self.policy_names:
-            rew[policy_name] = (fw_reward \
+        for agent_name in self.agent_names:
+            ctrl_costs_sum += np.sum(np.square(action_dict[agent_name]))
+        for agent_name in self.agent_names:
+            rew[agent_name] = (fw_reward \
                 - self.env.ctrl_cost_weight * ctrl_costs_sum \
-                - contact_costs_sum) / len(self.policy_names)
+                - contact_costs_sum) / len(self.agent_names)
         return rew
 
     def distribute_per_leg_reward(self, reward_full, info, action_dict):
@@ -161,15 +161,15 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         fw_reward = info['reward_forward']
         rew = {}    
         contact_costs = self.distribute_contact_cost()  
-        for policy_name in self.policy_names:
+        for agent_name in self.agent_names:
             if self.normalize_rewards:
-                rew[policy_name] = fw_reward - len(self.policy_names) \
-                    * (self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
-                    + contact_costs[policy_name])
+                rew[agent_name] = fw_reward - len(self.agent_names) \
+                    * (self.env.ctrl_cost_weight * np.sum(np.square(action_dict[agent_name])) \
+                    + contact_costs[agent_name])
             else:
-                rew[policy_name] = fw_reward / len(self.policy_names) \
-                    - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[policy_name])) \
-                    - contact_costs[policy_name]
+                rew[agent_name] = fw_reward / len(self.agent_names) \
+                    - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[agent_name])) \
+                    - contact_costs[agent_name]
         return rew
 
     def concatenate_actions(self, action_dict):
@@ -194,8 +194,8 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         #functions.mj_rnePostConstraint(self.env.model, self.env.data)
         
         # Combine actions from all agents and step environment.
-        obs_full, rew_w, done_w, info_w = self.env.step( self.concatenate_actions(action_dict) ) ##self.env.step( np.concatenate( (action_dict[self.policy_A],
-            #action_dict[self.policy_B]) ))
+        obs_full, rew_w, done_w, info_w = self.env.step( self.concatenate_actions(action_dict) ) ##self.env.step( np.concatenate( (action_dict[self.agent_A],
+            #action_dict[self.agent_B]) ))
             
         # Distribute observations and rewards to the individual agents.
         obs_dict = self.distribute_observations(obs_full)
