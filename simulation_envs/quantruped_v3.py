@@ -100,6 +100,16 @@ class QuAntrupedEnv(AntEnv):
         'hr_hip', 'hr_knee',
     ]
 
+    # contact forces are excerted onto bodies, not joints
+    CONTACT_FORCE_FIELDS = [
+        'body_floor',
+        'body',
+        'fl_hip', 'fl_leg', 'fl_foot',
+        'hl_hip', 'hl_leg', 'hl_foot',
+        'hr_hip', 'hr_leg', 'hr_foot',
+        'fr_hip', 'fr_leg', 'fr_foot'
+    ]
+
     def __init__(self, ctrl_cost_weight=0.5, contact_cost_weight=5e-4, healthy_reward=0., hf_smoothness=1.):
         # Some statistics collected during running, for debugging.
         self.start_pos = None
@@ -286,7 +296,7 @@ class QuAntrupedEnv(AntEnv):
         Returns the indices for the actions starting with one of the
         given prefixes.
         '''
-        obs_indices = []
+        action_indices = []
 
         # if no prefixes are given, pass an array with all indices.
         if prefixes is None:
@@ -294,10 +304,26 @@ class QuAntrupedEnv(AntEnv):
 
         for prefix in prefixes:
             idx = [ f.startswith(prefix) for f in self.ACTION_FIELDS ]
-            obs_indices.extend(list(np.where(idx)[0]))
+            action_indices.extend(list(np.where(idx)[0]))
 
-        return obs_indices
+        return action_indices
 
+    def get_contact_force_indices(self, prefixes=None):
+        '''
+        Returns the indices for the contact_forces starting with one of the
+        given prefixes.
+        '''
+        contact_force_indices = []
+
+        # if no prefixes are given, pass an array with all indices.
+        if prefixes is None:
+            return np.arange(len(self.CONTACT_FORCE_FIELDS))
+
+        for prefix in prefixes:
+            idx = [ f.startswith(prefix) for f in self.CONTACT_FORCE_FIELDS ]
+            contact_force_indices.extend(list(np.where(idx)[0]))
+
+        return contact_force_indices
 
 class QuAntrupedTVelEnv(QuAntrupedEnv):
     """ Environment with a quadruped walker - derived from the ant_v3 environment
