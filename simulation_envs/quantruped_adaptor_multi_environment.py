@@ -3,7 +3,6 @@ from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
 import mujoco_py
 from gym import spaces
-from mujoco_py import functions
 from collections import Iterable
 
 class QuantrupedMultiPoliciesEnv(MultiAgentEnv):

@@ -325,8 +325,9 @@ class QuAntrupedEnv(AntEnv):
 
         for prefix, weight in zip(prefixes, weights):
             mask = [ f.startswith(prefix) for f in self.CONTACT_FORCE_FIELDS ]
-            contact_force_indices.extend(list(np.where(mask)[0]))
-            contact_force_weights.extend([weight]*len(idx))
+            idx = list(np.where(mask)[0])
+            contact_force_indices.extend(idx)
+            contact_force_weights.extend([[weight]]*len(idx))
 
         return contact_force_indices, contact_force_weights
 

@@ -1,7 +1,4 @@
-import gym
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
-import mujoco_py
 from gym import spaces
 
 from simulation_envs import QuantrupedMultiPoliciesEnv
@@ -23,7 +20,6 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
     
     def __init__(self, config):
         super().__init__(config)
-        self.obs_indices = {}
         # First global information: 
         # 0: height, 1-4: quaternion orientation torso
         # 5: hip FL angle, 6: knee FL angle
@@ -48,7 +44,9 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
         # 41: hip HR angle, 42: knee HR angle
         # 35: hip FR angle, 36: knee FR angle
         # The central policy gets all observations
-        self.obs_indices["central_policy"] = self.env.get_obs_indices() # all observations
+        self.obs_indices = {
+            "central_policy" : self.env.get_obs_indices() # all observations
+        }
         self.action_indices = {
             "central_policy" : self.env.get_action_indices()
         }
