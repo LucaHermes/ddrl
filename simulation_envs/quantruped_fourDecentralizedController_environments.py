@@ -47,6 +47,124 @@ class QuantrupedFourControllerSuperEnv(QuantrupedMultiPoliciesEnv):
         else:
             return "policy_FR" 
 
+        
+class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
+    """ Derived environment for control of the four-legged agent.
+        Uses four different, concurrent control units (policies) 
+        each instantiated as a single agent. 
+
+        Input scope of each controller: only the controlled leg.
+
+        Class defines 
+        - policy_mapping_fn: defines names of the distributed controllers
+        - distribute_observations: how to distribute observations towards these controllers
+            Is defined in the obs_indices for each leg.
+    """ 
+    
+    # This is ordering of the policies as applied here:
+    policy_names = ["policy_FL","policy_HL","policy_HR","policy_FR"]
+    #obs_indices = {
+    #    "policy_FL" : [0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38],
+    #    "policy_HL" : [0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40],
+    #    "policy_HR" : [0,1,2,3,4, 9,10,13,14,15,16,17,18,23,24,31,32,41,42],
+    #    "policy_FR" : [0,1,2,3,4,11,12,13,14,15,16,17,18,25,26,33,34,35,36]
+    #}
+    
+    def __init__(self, config):
+        # First global information: 
+        # 0: height, 1-4: quaternion orientation torso
+        # 5: hip FL angle, 6: knee FL angle
+        # 7: hip HL angle, 8: knee HL angle
+        # 9: hip HR angle, 10: knee HR angle
+        # 11: hip FR angle, 12: knee FR angle
+        # Velocities follow same ordering, but have in addition x and y vel.
+        # 13-15: vel, 16-18: rotational velocity
+        # 19: hip FL angle, 20: knee FL angle
+        # 21: hip HL angle, 22: knee HL angle
+        # 23: hip HR angle, 24: knee HR angle
+        # 25: hip FR angle, 26: knee FR angle
+        # Passive forces same ordering, only local information used
+        # 27: hip FL angle, 28: knee FL angle
+        # 29: hip HL angle, 30: knee HL angle
+        # 31: hip HR angle, 32: knee HR angle
+        # 33: hip FR angle, 34: knee FR angle
+        # Last: control signals (clipped) from last time step
+        # Unfortunately, different ordering (as the action spaces...)
+        # 37: hip FL angle, 38: knee FL angle
+        # 39: hip HL angle, 40: knee HL angle
+        # 41: hip HR angle, 42: knee HR angle
+        # 35: hip FR angle, 36: knee FR angle
+        super().__init__(config)
+        self.obs_indices = {}
+        self.obs_indices["policy_FL"] = self.env.get_obs_indices(['body', 'fl']) #[0,1,2,3,4, 5, 6,13,14,15,16,17,18,19,20,27,28,37,38]
+        self.obs_indices["policy_HL"] = self.env.get_obs_indices(['body', 'hl']) #[0,1,2,3,4, 7, 8,13,14,15,16,17,18,21,22,29,30,39,40]
+        self.obs_indices["policy_HR"] = self.env.get_obs_indices(['body', 'hr'])
+        self.obs_indices["policy_FR"] = self.env.get_obs_indices(['body', 'fr'])
+        print(self.obs_indices)
+        asd
+        self.std_scaler = MeanStdFilter((len(self.policy_names), len(self.obs_indices["policy_FL"])))
+        self.adj = self.create_adj()
+
+    def create_edge_index(self):
+        policy_idx = list(self.obs_indices.keys())
+        get_node_idx = lambda policy_name: policy_idx.index(policy_name)
+        make_edge = lambda sender, receiver: [get_node_idx(sender), get_node_idx(receiver)]
+        # create bidirectional edge index
+        return [make_edge("policy_FL", "policy_HL"),
+                make_edge("policy_HL", "policy_HR"),
+                make_edge("policy_HR", "policy_FR"),
+                make_edge("policy_FR", "policy_FL"),
+
+                make_edge("policy_HL", "policy_FL"),
+                make_edge("policy_HR", "policy_HL"),
+                make_edge("policy_FR", "policy_HR"),
+                make_edge("policy_FL", "policy_FR")]
+
+    def create_adj(self):
+        edge_index = self.create_edge_index()
+        adj = np.zeros([4, 4], dtype=np.float64)
+        adj[(*np.transpose(edge_index),)] = 1.
+        return adj
+
+    @staticmethod
+    def return_policies(use_target_velocity=False):
+        # For each agent the policy interface has to be defined.
+        n_dims = 19 + use_target_velocity
+        index_space = spaces.MultiDiscrete([4])
+        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
+        adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
+        graph_space = spaces.Tuple([index_space, obs_space, adj_space])
+        policies = {
+            QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
+            QuantrupedFullyDecentralizedEnv.policy_names[1]: (None,
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
+            QuantrupedFullyDecentralizedEnv.policy_names[2]: (None,
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
+            QuantrupedFullyDecentralizedEnv.policy_names[3]: (None,
+                graph_space, spaces.Box(-1. +1., (2,)), {}),
+        }
+        return policies
+
+    def distribute_observations(self, obs_full):
+        """ 
+        Construct dictionary that routes to each policy only the relevant
+        local information.
+        """
+        obs_distributed = {}
+        policy_idx = list(self.obs_indices.keys())
+        graph_observation = np.stack([ obs_full[self.obs_indices[p_idx]] for p_idx in policy_idx ])
+        graph_observation = self._normalize_observation(graph_observation)
+
+        for policy_name in self.policy_names:
+            obs_distributed[policy_name] = (
+                np.array([policy_idx.index(policy_name)]), 
+                graph_observation.astype(obs_full.dtype), 
+                self.adj
+            )
+
+        return obs_distributed
+
 class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
     """ Derived environment for control of the four-legged agent.
         Uses four different, concurrent control units (policies) 

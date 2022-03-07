@@ -1,10 +1,12 @@
 import numpy as np
 import gym
+import uuid
 from gym import spaces
 
 import ray
 import ray.rllib.agents.ppo as ppo
 from ray.rllib.agents.ppo import PPOTrainer, DEFAULT_CONFIG
+from ray.tune.integration.wandb import WandbLogger
 from ray.tune.logger import pretty_print
 from ray import tune
 from ray.tune import grid_search
@@ -154,7 +156,14 @@ def on_train_result(info):
     timesteps_res = result["timesteps_total"]
     trainer.workers.foreach_worker(
         lambda ev: ev.foreach_env( lambda env: env.update_environment_after_epoch( timesteps_res ) )) 
-config["callbacks"]={"on_train_result": on_train_result,}
+
+config["callbacks"] = { "on_train_result" : on_train_result }
+config['logger_config'] = {
+    "wandb": {
+        "project": "DDRL",
+        "group"  : str(uuid.uuid4())
+    }
+}
 
 if args.name:
     policy_scope = f'{policy_scope}:{args.name}'
@@ -179,4 +188,5 @@ analysis = tune.run(
     checkpoint_freq=312,
     stop={"timesteps_total": 20000000},
     config=config,
+    loggers=[WandbLogger]
 )
