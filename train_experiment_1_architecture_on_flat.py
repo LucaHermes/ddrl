@@ -92,6 +92,7 @@ ray.init(ignore_reinit_error=True)
 config = ppo.DEFAULT_CONFIG.copy()
 
 config['env'] = policy_scope
+config['run_name_suffix'] = args.name
 print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 
 config['num_workers']=2
@@ -99,9 +100,7 @@ config['num_envs_per_worker']=4
 #config['nump_gpus']=1
 
 # used grid_search([4000, 16000, 65536], didn't matter too much
-config['train_batch_size'] = 16000 
-DE
-1
+config['train_batch_size'] = 16000
 
 # Baseline Defaults:
 config['gamma'] = 0.99
