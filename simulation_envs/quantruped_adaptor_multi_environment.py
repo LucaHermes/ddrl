@@ -1,5 +1,6 @@
 import gym
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
+from simulation_envs.observation_filter import MeanStdFilterSingleton
 import numpy as np
 import mujoco_py
 from gym import spaces
@@ -76,6 +77,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             self.curriculum_target_smoothness = config['range_smoothness'][1]
         if 'range_last_timestep' in config.keys():
             self.curriculum_last_timestep = config['range_last_timestep']
+    
+    def _normalize_observation(self, observation):
+        obs_filter = MeanStdFilterSingleton.get_instance(observation.shape)
+        return obs_filter(observation)
 
     def create_env(self, use_target_velocity=False, **env_args):
         if use_target_velocity:
@@ -115,8 +120,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         information.
         """
         obs_distributed = {}
+        obs_full_normed = self._normalize_observation(obs_full)
         for policy_name in self.policy_names:
-            obs_distributed[policy_name] = obs_full[self.obs_indices[policy_name]]
+            obs_idx = self.obs_indices[policy_name]
+            obs_distributed[policy_name] = obs_full_normed[obs_idx]
         return obs_distributed
     
     def distribute_contact_cost(self):

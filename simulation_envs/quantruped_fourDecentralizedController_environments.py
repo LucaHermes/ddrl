@@ -167,7 +167,7 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
         obs_distributed = {}
         policy_idx = list(self.obs_indices.keys())
         graph_observation = np.stack([ obs_full[self.obs_indices[p_idx]] for p_idx in policy_idx ])
-        graph_observation = self.std_scaler(graph_observation)
+        graph_observation = self._normalize_observation(graph_observation)
 
         for policy_name in self.policy_names:
             obs_distributed[policy_name] = (

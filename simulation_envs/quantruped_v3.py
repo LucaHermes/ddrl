@@ -117,10 +117,13 @@ class QuAntrupedEnv(AntEnv):
         self.vel_rewards = 0.
         self.sum_rewards = 0.
         self.ctrl_costs = 0.
-        
         self.max_steps = 1000
         
-        super().__init__(xml_file=os.path.join(os.path.dirname(__file__), 'assets','ant_hfield.xml'), ctrl_cost_weight=ctrl_cost_weight, contact_cost_weight=contact_cost_weight)
+        ant_xml = os.path.join(os.path.dirname(__file__), 'assets', 'ant_hfield.xml')
+        super().__init__(xml_file=ant_xml, 
+                         ctrl_cost_weight=ctrl_cost_weight, 
+                         contact_cost_weight=contact_cost_weight)
+        
         self.ctrl_cost_weight = self._ctrl_cost_weight
         self.contact_cost_weight = self._contact_cost_weight
         
