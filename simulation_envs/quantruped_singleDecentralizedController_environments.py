@@ -62,3 +62,43 @@ class QuantrupedSingleDecentralizedEnv(QuantrupedSingleControllerSuperEnv):
     
     def __init__(self, config):
         super().__init__(config)
+        
+class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
+    
+    leg_angles = {
+        'agent_FL' : 45.,
+        'agent_HL' : 135.,
+        'agent_HR' : -135.,
+        'agent_FR' : -45.,
+    }
+        
+    def leg_encoding(self, angle):
+        return np.stack((np.sin(np.deg2rad(angle)), np.cos(np.deg2rad(angle))))
+    
+    def distribute_observations(self, obs_full):
+        """ 
+        Construct dictionary that routes to each policy only the relevant
+        information.
+        """
+        obs_distributed = {}
+        obs_full_normed = self._normalize_observation(obs_full)
+        
+        for agent_name in self.agent_names:
+            obs_idx = self.obs_indices[agent_name]
+            obs = obs_full_normed[obs_idx]
+            obs_distributed[agent_name] = np.concatenate((
+                obs_full_normed[obs_idx], 
+                self.leg_angles[agent_name]))
+            
+        return obs_distributed
+    
+    @staticmethod
+    def return_policies(use_target_velocity=False):
+        # For each agent the policy interface has to be defined.
+        n_dims = 19 + use_target_velocity + 2
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        policies = {
+            QuantrupedSingleControllerSuperEnv.policy_names[0]: (None,
+                obs_space, spaces.Box(-1., 1., (2,)), {}),
+        }
+        return policies

@@ -34,8 +34,6 @@ assert not (args.norm_reward and args.global_reward)
 assert not (args.norm_reward and use_target_velocity)
 assert not (args.global_reward and use_target_velocity)
 
-obs_filter = 'MeanStdFilter'
-
 # Possible values: 
 #   QuantrupedMultiEnv_Centralized - single controller, global information
 #   QuantrupedMultiEnv_FullyDecentral - four decentralized controlller, information 
@@ -66,7 +64,6 @@ if policy_scope=="QuantrupedMultiEnv_FullyDecentral":
     from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_Decentral_Graph":
     from simulation_envs.quantruped_GraphDecentralizedController_environments import QuantrupedDecentralizedGraphEnv as QuantrupedEnv
-    obs_filter = 'NoFilter'
 elif policy_scope=="QuantrupedMultiEnv_SingleNeighbor":
     from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleDiagonal":
@@ -81,6 +78,10 @@ elif policy_scope=="QuantrupedMultiEnv_TwoDiags":
     from simulation_envs.quantruped_twoDecentralizedController_environments import Quantruped_TwoDiagControllers_Env as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_FullyDecentralGlobalCost":
     from simulation_envs.quantruped_fourDecentralizedController_GlobalCosts_environments import QuantrupedFullyDecentralizedGlobalCostEnv as QuantrupedEnv
+elif policy_scope=="QuantrupedMultiEnv_SharedDecentral":
+    from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv as QuantrupedEnv
+elif policy_scope=="QuantrupedMultiEnv_SharedDecentralLegID":
+    from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegIDEnv as QuantrupedEnv
 else:
     from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
@@ -99,6 +100,8 @@ config['num_envs_per_worker']=4
 
 # used grid_search([4000, 16000, 65536], didn't matter too much
 config['train_batch_size'] = 16000 
+DE
+1
 
 # Baseline Defaults:
 config['gamma'] = 0.99
@@ -110,7 +113,7 @@ config['clip_param'] = 0.2
 config['vf_loss_coeff'] = 0.5
 #config['vf_clip_param'] = 4000.
 
-config['observation_filter'] = obs_filter
+config['observation_filter'] = 'NoFilter'
 
 config['sgd_minibatch_size'] = 128
 config['num_sgd_iter'] = 10
