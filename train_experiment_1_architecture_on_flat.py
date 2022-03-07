@@ -63,7 +63,7 @@ else:
 if policy_scope=="QuantrupedMultiEnv_FullyDecentral":
     from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_Decentral_Graph":
-    from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedDecentralizedGraphEnv as QuantrupedEnv
+    from simulation_envs.quantruped_GraphDecentralizedController_environments import QuantrupedDecentralizedGraphEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleNeighbor":
     from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SingleDiagonal":

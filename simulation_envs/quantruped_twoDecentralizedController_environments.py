@@ -1,7 +1,4 @@
-import gym
-from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import numpy as np
-import mujoco_py
 from gym import spaces
 
 from simulation_envs import QuantrupedMultiPoliciesEnv
@@ -25,7 +22,6 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
     policy_names = ["policy_LEFT","policy_RIGHT"]
     
     def __init__(self, config):
-        self.obs_indices = {}
         # First global information: 
         # 0: height, 1-4: quaternion orientation torso
         # 5: hip FL angle, 6: knee FL angle
@@ -60,29 +56,16 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
             'policy_LEFT'  : self.env.get_action_indices(['fl', 'hl']), #[2, 3, 4, 5],
             'policy_RIGHT' : self.env.get_action_indices(['hr', 'fr']), #[6, 7, 0, 1],
         }
-        # Each controller only gets information from that body side: Left
-        self.obs_indices["policy_LEFT"]  = self.env.get_obs_indices(['body', 'fl', 'hl'])
-        # Each controller only gets information from that body side: Right
-        self.obs_indices["policy_RIGHT"] = self.env.get_obs_indices(['body', 'hr', 'fr'])
-
-    def distribute_contact_cost(self):
-        contact_cost = {}
-        #print("CONTACT COST")
-        #from mujoco_py import functions
-        #functions.mj_rnePostConstraint(self.env.model, self.env.data)
-        #print("From Ant Env: ", self.env.contact_cost)
-        raw_contact_forces = self.env.sim.data.cfrc_ext
-        contact_forces = np.clip(raw_contact_forces, -1., 1.)
-        contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
-        global_contact_costs = np.sum(contact_costs[0:2])/4.
-        contact_cost[self.policy_names[0]] = global_contact_costs + np.sum(contact_costs[2:5]) + np.sum(contact_costs[5:8])
-        contact_cost[self.policy_names[1]] = global_contact_costs + np.sum(contact_costs[8:11]) + np.sum(contact_costs[11:])
-        #print(contact_cost)
-        #sum_c = 0.
-        #for i in self.policy_names:
-         #   sum_c += contact_cost[i]
-        #print("Calculated: ", sum_c)
-        return contact_cost
+        self.obs_indices = {
+            # Each controller only gets information from that body side: Left
+            "policy_LEFT"  : self.env.get_obs_indices(['body', 'fl', 'hl']),
+            # Each controller only gets information from that body side: Right
+            "policy_RIGHT" : self.env.get_obs_indices(['body', 'hr', 'fr'])
+        }
+        self.contact_force_indices = {
+            'policy_LEFT'  : self.env.get_contact_force_indices(['body', 'fl', 'hl'], weights=[1./2., 1., 1.]), #[2, 3]
+            'policy_RIGHT' : self.env.get_contact_force_indices(['body', 'hr', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
+        }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
@@ -123,7 +106,6 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
     policy_names = ["policy_FLHR","policy_HLFR"]
     
     def __init__(self, config):
-        self.obs_indices = {}
         # First global information: 
         # 0: height, 1-4: quaternion orientation torso
         # 5: hip FL angle, 6: knee FL angle
@@ -155,29 +137,16 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
             'policy_FLHR' : self.env.get_action_indices(['fl', 'hr']), #[2, 3, 6, 7],
             'policy_HLFR' : self.env.get_action_indices(['hl', 'fr']), #[4, 5, 0, 1],
         }
-        # Each controller only gets information from two legs, diagonally arranged: FL-HR
-        self.obs_indices["policy_FLHR"] = self.env.get_obs_indices(['body', 'fl', 'hr'])
-        # Each controller only gets information from two legs, diagonally arranged: HL-FR
-        self.obs_indices["policy_HLFR"] = self.env.get_obs_indices(['body', 'hl', 'fr'])
-        
-    def distribute_contact_cost(self):
-        contact_cost = {}
-        #print("CONTACT COST")
-        #from mujoco_py import functions
-        #functions.mj_rnePostConstraint(self.env.model, self.env.data)
-        #print("From Ant Env: ", self.env.contact_cost)
-        raw_contact_forces = self.env.sim.data.cfrc_ext
-        contact_forces = np.clip(raw_contact_forces, -1., 1.)
-        contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
-        global_contact_costs = np.sum(contact_costs[0:2])/4.
-        contact_cost[self.policy_names[0]] = global_contact_costs + np.sum(contact_costs[2:5]) + np.sum(contact_costs[8:11])
-        contact_cost[self.policy_names[1]] = global_contact_costs + np.sum(contact_costs[5:8]) + np.sum(contact_costs[11:])
-        #print(contact_cost)
-        #sum_c = 0.
-        #for i in self.policy_names:
-         #   sum_c += contact_cost[i]
-        #print("Calculated: ", sum_c)
-        return contact_cost
+        self.obs_indices = {
+            # Each controller only gets information from two legs, diagonally arranged: FL-HR
+            "policy_FLHR" : self.env.get_obs_indices(['body', 'fl', 'hr']),
+            # Each controller only gets information from two legs, diagonally arranged: HL-FR
+            "policy_HLFR" : self.env.get_obs_indices(['body', 'hl', 'fr'])
+        }
+        self.contact_force_indices = {
+            'policy_FLHR' : self.env.get_contact_force_indices(['body', 'fl', 'hr'], weights=[1./2., 1., 1.]), #[2, 3]
+            'policy_HLFR' : self.env.get_contact_force_indices(['body', 'hl', 'fr'], weights=[1./2., 1., 1.]), #[4, 5]
+        }
         
     @staticmethod
     def policy_mapping_fn(agent_id):
