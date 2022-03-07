@@ -92,7 +92,6 @@ ray.init(ignore_reinit_error=True)
 config = ppo.DEFAULT_CONFIG.copy()
 
 config['env'] = policy_scope
-config['run_name_suffix'] = args.name
 print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 
 config['num_workers']=2
@@ -163,7 +162,7 @@ config["callbacks"] = { "on_train_result" : on_train_result }
 config['logger_config'] = {
     "wandb": {
         "project": "DDRL",
-        "group"  : str(uuid.uuid4())
+        "group"  : args.name + '_' + str(uuid.uuid4())
     }
 }
 
