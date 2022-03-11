@@ -5,3 +5,5 @@ from models.graphnet_glorot_uniform_init import FullyConnectedNetwork_SharedGNN_
 ModelCatalog.register_custom_model("ffn", FullyConnectedNetwork_GlorotUniformInitializer)
 ModelCatalog.register_custom_model("gnn", FullyConnectedNetwork_SharedGNN_GlorotUniformInitializer)
 
+# for backward compatibility
+ModelCatalog.register_custom_model("fc_glorot_uniform_init", FullyConnectedNetwork_GlorotUniformInitializer)

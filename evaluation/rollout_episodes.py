@@ -1,5 +1,4 @@
 import collections
-
 from ray.rllib.utils.spaces.space_utils import flatten_to_single_ndarray
 from ray.rllib.env.base_env import _DUMMY_AGENT_ID
 from ray.rllib.env import MultiAgentEnv
@@ -45,9 +44,9 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
     policy_map = agent.workers.local_worker().policy_map
     state_init = {p: m.get_initial_state() for p, m in policy_map.items()}
     use_lstm = {p: len(s) > 0 for p, s in state_init.items()}
-    
+
     action_init = {
-        p: flatten_to_single_ndarray(m.action_space.sample())
+        p: flatten_to_single_ndarray(np.zeros(m.action_space.shape))
         for p, m in policy_map.items()
     }
     

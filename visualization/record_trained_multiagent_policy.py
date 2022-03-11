@@ -1,8 +1,8 @@
 import ray
-import pickle
+#import pickle
 # When using older versions of python (3.6 <=), use pickle5 when you want to interchange
 # saved picklefiles
-#import pickle5 as pickle
+import pickle5 as pickle
 import os
 
 from ray.tune.registry import get_trainable_cls
@@ -59,6 +59,9 @@ config_checkpoints = [os.getcwd() + "/Results/experiment_1_models_architectures_
 #HF_10_QuantrupedMultiEnv_TwoSides/PPO_QuantrupedMultiEnv_TwoSides_6654b_00006_6_2020-12-06_17-42-00
 #HF_10_QuantrupedMultiEnv_FullyDecentral/PPO_QuantrupedMultiEnv_FullyDecentral_19697_00004_4_2020-12-04_12-08-56
 
+os.path.isdir('videos') or os.mkdir('videos')
+
+
 for config_checkpoint in config_checkpoints:
     config_dir = os.path.dirname(config_checkpoint)
     config_path = os.path.join(config_dir, "params.pkl")
@@ -69,6 +72,8 @@ for config_checkpoint in config_checkpoints:
     if os.path.exists(config_path):
         with open(config_path, "rb") as f:
             config = pickle.load(f)
+
+    print(config)
         
     # Starting ray and setting up ray.
     if "num_workers" in config:
@@ -89,7 +94,7 @@ for config_checkpoint in config_checkpoints:
         env = agent.workers.local_worker().env
 
     save_image_dir = 'videos/' + config_path.partition('MultiEnv_')[2].partition('/')[0] + '_smoothn_' + str(smoothness)
-    os.mkdir(save_image_dir)
+    os.path.isdir(save_image_dir) or os.mkdir(save_image_dir)
     # Rolling out simulation = stepping through simulation. 
     rollout_episodes(env, agent, num_episodes=num_episodes, num_steps=num_steps, render=True, save_images=save_image_dir+"/img_", save_obs=save_image_dir)
     agent.stop()
