@@ -73,7 +73,9 @@ class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
     }
         
     def leg_encoding(self, angle):
-        return np.stack((np.sin(np.deg2rad(angle)), np.cos(np.deg2rad(angle))))
+        # using the half angle results in a quaternion-like representation
+        alpha = np.deg2rad(angle)
+        return np.stack((np.sin(alpha), np.cos(alpha)))
     
     def distribute_observations(self, obs_full):
         """ 
@@ -88,7 +90,7 @@ class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
             obs = obs_full_normed[obs_idx]
             obs_distributed[agent_name] = np.concatenate((
                 obs_full_normed[obs_idx], 
-                self.leg_angles[agent_name]))
+                self.leg_encoding(self.leg_angles[agent_name])))
             
         return obs_distributed
     
@@ -102,3 +104,36 @@ class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
         }
         return policies
+
+class QuantrupedSingleDecentralizedLegTransforms(QuantrupedSingleControllerSuperEnv):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.obs_scale = np.ones_like(self.env.get_obs_indices(), dtype=np.float32)
+        self.obs_scale[self.env.get_obs_indices(['fr_knee'])] = -1.
+        self.obs_scale[self.env.get_obs_indices(['hr_knee'])] = -1.
+        self.action_scale = np.ones_like(self.env.get_action_indices(), dtype=np.float32)
+        self.action_scale[self.env.get_action_indices(['fr_knee'])] = -1.
+        self.action_scale[self.env.get_action_indices(['hr_knee'])] = -1.
+
+    def distribute_observations(self, obs_full):
+        """ 
+        Construct dictionary that routes to each policy only the relevant
+        information.
+        """
+        obs_distributed = {}
+        obs_full_normed = self._normalize_observation(obs_full)
+        obs_full_normed *= self.obs_scale
+
+        for agent_name in self.agent_names:
+            obs_idx = self.obs_indices[agent_name]
+            obs = obs_full_normed[obs_idx]
+            obs_distributed[agent_name] = obs_full_normed[obs_idx]
+            
+        return obs_distributed
+
+    def concatenate_actions(self, action_dict):
+        actions = np.empty(8,)
+        for k in action_dict:
+            actions[self.action_indices[k]] = action_dict[k]
+        return actions * self.action_scale

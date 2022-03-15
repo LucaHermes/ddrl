@@ -82,6 +82,8 @@ elif policy_scope=="QuantrupedMultiEnv_SharedDecentral":
     from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv as QuantrupedEnv
 elif policy_scope=="QuantrupedMultiEnv_SharedDecentralLegID":
     from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegIDEnv as QuantrupedEnv
+elif policy_scope=="QuantrupedMultiEnv_SharedDecentralLegTransforms":
+    from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegTransforms as QuantrupedEnv
 else:
     from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
