@@ -58,7 +58,7 @@
       <body name="back_leg" pos="0 0 0">
         <geom fromto="0.0 0.0 0.0 -0.2 -0.2 0.0" name="aux_3_geom" size="0.08" type="capsule"/>
         <body name="aux_3" pos="-0.2 -0.2 0">
-          <joint axis="0 0 1" name="hip_3" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+          <joint axis="0 0 -1" name="hip_3" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
           <geom fromto="0.0 0.0 0.0 -0.2 -0.2 0.0" name="back_leg_geom" size="0.08" type="capsule"/>
           <body pos="-0.2 -0.2 0">
             <joint axis="1 -1 0" name="ankle_3" pos="0.0 0.0 0.0" range="30 70" type="hinge"/>
@@ -69,7 +69,7 @@
       <body name="right_back_leg" pos="0 0 0">
         <geom fromto="0.0 0.0 0.0 0.2 -0.2 0.0" name="aux_4_geom" size="0.08" type="capsule"/>
         <body name="aux_4" pos="0.2 -0.2 0">
-          <joint axis="0 0 1" name="hip_4" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
+          <joint axis="0 0 -1" name="hip_4" pos="0.0 0.0 0.0" range="-30 30" type="hinge"/>
           <geom fromto="0.0 0.0 0.0 0.2 -0.2 0.0" name="rightback_leg_geom" size="0.08" type="capsule"/>
           <body pos="0.2 -0.2 0">
             <joint axis="1 1 0" name="ankle_4" pos="0.0 0.0 0.0" range="30 70" type="hinge"/>

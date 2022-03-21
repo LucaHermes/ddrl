@@ -84,21 +84,30 @@ class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
         """
         obs_distributed = {}
         obs_full_normed = self._normalize_observation(obs_full)
+        agent_idx = list(self.obs_indices.keys())
         
         for agent_name in self.agent_names:
             obs_idx = self.obs_indices[agent_name]
-            obs = obs_full_normed[obs_idx]
-            obs_distributed[agent_name] = np.concatenate((
-                obs_full_normed[obs_idx], 
-                self.leg_encoding(self.leg_angles[agent_name])))
-            
+            #obs = obs_full_normed[obs_idx]
+            #obs_distributed[agent_name] = np.concatenate((
+            #    obs_full_normed[obs_idx], 
+            #    self.leg_encoding(self.leg_angles[agent_name])))
+            obs_distributed[agent_name] = (
+                np.array([agent_idx.index(agent_name)]),
+                obs_full_normed[obs_idx]
+            )
+
         return obs_distributed
     
     @staticmethod
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        n_dims = 19 + use_target_velocity + 2
+        n_dims = 19 + use_target_velocity #+ 2
+
+        index_space = spaces.MultiDiscrete([4])
         obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Tuple([index_space, obs_space])
+
         policies = {
             QuantrupedSingleControllerSuperEnv.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -110,8 +119,8 @@ class QuantrupedSingleDecentralizedLegTransforms(QuantrupedSingleControllerSuper
     def __init__(self, config):
         super().__init__(config)
         self.obs_scale = np.ones_like(self.env.get_obs_indices(), dtype=np.float32)
-        self.obs_scale[self.env.get_obs_indices(['fr_knee'])] = -1.
-        self.obs_scale[self.env.get_obs_indices(['hr_knee'])] = -1.
+        #self.obs_scale[self.env.get_obs_indices(['fr_knee'])] = -1.
+        #self.obs_scale[self.env.get_obs_indices(['hr_knee'])] = -1.
         self.action_scale = np.ones_like(self.env.get_action_indices(), dtype=np.float32)
         self.action_scale[self.env.get_action_indices(['fr_knee'])] = -1.
         self.action_scale[self.env.get_action_indices(['hr_knee'])] = -1.
