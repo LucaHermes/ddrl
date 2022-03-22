@@ -7,6 +7,7 @@ from simulation_envs.ant_v3_mujoco_2 import AntEnvMujoco2
 # Importing the different multiagent environments.
 from simulation_envs.quantruped_adaptor_multi_environment import QuantrupedMultiPoliciesEnv
 from simulation_envs.quantruped_GraphDecentralizedController_environments import QuantrupedDecentralizedGraphEnv
+from simulation_envs.quantruped_GraphDecentralizedController_environments import QuantrupedDecentralizedSharedGraphEnv
 from simulation_envs.quantruped_fourDecentralizedController_environments import QuantrupedFullyDecentralizedEnv
 from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleNeighboringLeg_Env
 from simulation_envs.quantruped_fourDecentralizedController_environments import Quantruped_LocalSingleDiagonalLeg_Env
@@ -19,7 +20,6 @@ from simulation_envs.quantruped_fourDecentralizedController_GlobalCosts_environm
 
 from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv
 from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegIDEnv
-
 # Register Gym environment. 
 register(
 	id='QuAntruped-v3',
@@ -49,6 +49,7 @@ register_env("QuAntrupedTVel-v3", lambda config: TimeLimit(QuAntrupedTVelEnv(), 
 # Register multiagent environments (allowing individual access to individual legs).
 register_env("QuantrupedMultiEnv_Centralized", lambda config: QuantrupedMultiPoliciesEnv(config) )
 register_env("QuantrupedMultiEnv_Decentral_Graph", lambda config: QuantrupedDecentralizedGraphEnv(config) )
+register_env("QuantrupedMultiEnv_DecentralShared_Graph", lambda config: QuantrupedDecentralizedSharedGraphEnv(config) )
 register_env("QuantrupedMultiEnv_FullyDecentral", lambda config: QuantrupedFullyDecentralizedEnv(config) )
 register_env("QuantrupedMultiEnv_FullyDecentralGlobalCost", lambda config: QuantrupedFullyDecentralizedGlobalCostEnv(config) )
 register_env("QuantrupedMultiEnv_SingleNeighbor", lambda config: Quantruped_LocalSingleNeighboringLeg_Env(config) )
