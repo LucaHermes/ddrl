@@ -166,7 +166,7 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
             make_edge('agent_FR', 'agent_HR'),
             make_edge('agent_FL', 'agent_FR'),
             # selfloops
-            *[ [i, i] for i in range(len(self.agent_names)) ]
+            #*[ [i, i] for i in range(len(self.agent_names)) ]
         ]
 
     def create_adj(self):
