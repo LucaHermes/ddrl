@@ -12,11 +12,11 @@ class GCN(layers.Layer):
     where A' is the normalized adjacency matrix, X are the node
     features and W is the weight matrix.
     '''
-    def __init__(self, units, activation=None, use_weight=True, use_bias=False, **kwargs):
+    def __init__(self, units, activation=None, use_weight=True, use_bias=False, kernel_initializer=None, **kwargs):
         super(GCN, self).__init__()
         self.bias = None
         if use_weight:
-            self.linear = layers.Dense(units, use_bias=False)
+            self.linear = layers.Dense(units, use_bias=False, kernel_initializer=kernel_initializer)
         self.activation = layers.Activation(activation)
         self.use_weight = use_weight
         self.use_bias = use_bias

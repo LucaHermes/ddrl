@@ -28,6 +28,7 @@
     <camera name="sideon" pos="0 -10 5" fovy="45" mode="targetbody" target="torso" />
     <camera name="side_run" pos="10 -20 3" fovy="45" xyaxes="1 0 0 0 0 1" mode="fixed"/>
     <camera name="float_far"  pos="-4 0 2" xyaxes="0 -1 0 .5 0 1" mode="trackcom" fovy="90"/>
+    <camera name="topdown" pos="0 0 5" xyaxes="1 0 0 0 1 0" mode="trackcom" />
     <geom name='floor' material="MatPlane" pos='0 0 0' type='hfield' conaffinity='1' rgba='0.8 0.9 0.8 1' condim='3' hfield="hill"/>
     <body name="torso" pos="0 0 0.75">
       <camera name="track" mode="trackcom" pos="0 -3 0.3" xyaxes="1 0 0 0 0 1"/>
