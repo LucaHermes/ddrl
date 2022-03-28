@@ -155,18 +155,20 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         get_node_idx = lambda agent_name: agent_idx.index(agent_name)
         make_edge = lambda sender, receiver: [get_node_idx(sender), get_node_idx(receiver)]
         # create bidirectional edge index
-        return [make_edge('agent_FL', 'agent_HL'),
-                make_edge('agent_HL', 'agent_HR'),
-                make_edge('agent_HR', 'agent_FR'),
-                make_edge('agent_FR', 'agent_FL'),
+        return [
+            make_edge('agent_FL', 'agent_HL'),
+            make_edge('agent_HL', 'agent_HR'),
+            make_edge('agent_HR', 'agent_FR'),
+            make_edge('agent_FR', 'agent_FL'),
 
-                make_edge('agent_HL', 'agent_FL'),
-                make_edge('agent_HR', 'agent_HL'),
-                make_edge('agent_FR', 'agent_HR'),
-                make_edge('agent_FL', 'agent_FR'),
-                # selfloops
-                *[ [i, i] for i in range(len(self.agent_names)) ]
+            make_edge('agent_HL', 'agent_FL'),
+            make_edge('agent_HR', 'agent_HL'),
+            make_edge('agent_FR', 'agent_HR'),
+            make_edge('agent_FL', 'agent_FR'),
+            # selfloops
+            #*[ [i, i] for i in range(len(self.agent_names)) ]
         ]
+
     def create_adj(self):
         edge_index = self.create_edge_index()
         adj = np.zeros([4, 4], dtype=np.float64)

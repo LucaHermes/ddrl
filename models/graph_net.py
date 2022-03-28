@@ -1,6 +1,6 @@
 from ray.rllib.utils.framework import get_activation_fn, try_import_tf
 from models.glorot_uniform_scaled_initializer import GlorotUniformScaled
-from models.gcn import GCN
+from models.gcn import GCN, MPNN
 
 
 tf1, tf, tfv = try_import_tf()
@@ -16,7 +16,7 @@ class GraphNet(tf.keras.Model):
             name="state_enc",
             activation=activation,
             kernel_initializer=GlorotUniformScaled(1.0))
-        self.gnn = GCN(
+        self.gnn = MPNN( #GCN(
             hiddens[1],
             activation=activation,
             use_bias=True,
