@@ -145,7 +145,21 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
     def leg_encoding(self, angle):
         rad = np.deg2rad(angle)
         return np.stack((np.sin(rad), np.cos(rad)))
-        
+    
+    def quaternion_multiply(self, quat1, quat2):
+        x1, y1, z1, w1 = quat1
+        x2, y2, z2, w2 = quat2
+        x = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2
+        y = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2
+        z = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2
+        w = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2
+        return np.array([x, y, z, w])
+
+    def leg_encoding_ego(self, angle, full_obs):
+        # use half-angle to compute quaternion
+        quat_z, quat_w = self.leg_encoding(angle / 2.)
+        return self.quaternion_multiply(full_obs[1:5], [0., 0., quat_z, quat_w])
+
     @staticmethod
     def policy_mapping_fn(agent_id):
         return 'leg_policy'
@@ -178,7 +192,7 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
     @staticmethod
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
-        n_dims = 19 + use_target_velocity + 2
+        n_dims = 19 + use_target_velocity + 2 + 2
         index_space = spaces.MultiDiscrete([4])
         obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
         adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
@@ -188,6 +202,18 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
                 graph_space, spaces.Box(-1., +1., (2,)), {}),
         }
         return policies
+
+    def update_after_epoch(self, timesteps_total):
+        # This method overrides the method in quantruped super env
+        # and applies a curriculum to the adjacency matrix.
+        return
+        self.adj = self.create_adj()
+        self.adj *= (timesteps_total/15e6)**2
+        print('~'*100)
+        print('~'*100)
+        print('Curriculum for adjacency matrix applied')
+        print('~'*100)
+        print('~'*100)
 
     def distribute_observations(self, obs_full):
         ''' 
@@ -200,8 +226,9 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
 
         obs_full_normed = self._normalize_observation(obs_full)
         get_leg_features = lambda agent_name: np.concatenate((
-            obs_full_normed[self.obs_indices[agent_name]], 
-            self.leg_encoding(self.leg_angles[agent_name])
+            obs_full_normed[self.obs_indices[agent_name]],
+            # self.leg_encoding(self.leg_angles[agent_name])
+            self.leg_encoding_ego(self.leg_angles[agent_name], obs_full)
         ))
         
         graph_observation = np.stack([ get_leg_features(a_idx) for a_idx in agent_idx ])
@@ -212,5 +239,7 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
                 graph_observation.astype(obs_full.dtype), 
                 self.adj
             )
-
+        #print('~'*100)
+        #print(obs_distributed)
+        #print('~'*100)
         return obs_distributed

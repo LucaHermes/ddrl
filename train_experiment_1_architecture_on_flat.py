@@ -94,12 +94,19 @@ else:
 ray.init(ignore_reinit_error=True)
 
 config = ppo.DEFAULT_CONFIG.copy()
-
+#print(config)
+#asd
 config['env'] = policy_scope
 print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 
+#gpu_count = 1. / 10.
+#num_gpus = gpu_count / 3.
+#num_gpus_per_worker = (gpu_count - num_gpus) / 1.
+
+#config['num_gpus']=num_gpus
 config['num_workers']=2
 config['num_envs_per_worker']=4
+#config['num_gpus_per_worker']=1. #num_gpus_per_worker
 #config['nump_gpus']=1
 
 # used grid_search([4000, 16000, 65536], didn't matter too much
@@ -192,6 +199,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     checkpoint_freq=312,
     stop={"timesteps_total": 20000000},
+    #resources_per_trial={ "cpu" : 2, "gpu" : 1./10. },
     config=config,
     loggers=[WandbLogger]
 )

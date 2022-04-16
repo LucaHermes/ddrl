@@ -88,11 +88,16 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             env = "QuAntruped-v3"
         return gym.make(env, **env_args)
 
+    def update_after_epoch(self, timesteps_total):
+        pass
+
     def update_environment_after_epoch(self, timesteps_total):
         """
             Called after each training epoch.
             Can be used to set a curriculum during learning.
         """
+        self.update_after_epoch(timesteps_total)
+
         if self.curriculum_learning:
             if self.curriculum_last_timestep > timesteps_total:
                 # Two different variants:

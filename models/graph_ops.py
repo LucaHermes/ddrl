@@ -19,3 +19,8 @@ def adj_norm(adj):
     d_norm = tf.reduce_sum(adj, axis=-1)**-1.
     d_norm = tf.linalg.diag(d_norm)
     return d_norm @ adj
+
+def segment_softmax(data, segment_ids, num_segments):
+    seg_sums = tf.math.unsorted_segment_sum(tf.exp(data), segment_ids, num_segments)
+    seg_sums = tf.gather(seg_sums, segment_ids)
+    return tf.exp(data) / seg_sums
