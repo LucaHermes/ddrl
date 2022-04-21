@@ -1,3 +1,4 @@
+import simulation_envs
 import numpy as np
 import gym
 import uuid
@@ -12,7 +13,6 @@ from ray import tune
 from ray.tune import grid_search
 import time
 
-import simulation_envs
 import models
 
 import argparse
@@ -91,7 +91,7 @@ else:
 
 # Init ray: First line on server, second for laptop
 #ray.init(num_cpus=30, ignore_reinit_error=True)
-ray.init(ignore_reinit_error=True)
+ray.init(num_gpus=1, ignore_reinit_error=True)
 
 config = ppo.DEFAULT_CONFIG.copy()
 #print(config)
@@ -103,10 +103,13 @@ print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 #num_gpus = gpu_count / 3.
 #num_gpus_per_worker = (gpu_count - num_gpus) / 1.
 
-#config['num_gpus']=num_gpus
+#config['num_gpus']=1#num_gpus
 config['num_workers']=2
 config['num_envs_per_worker']=4
-#config['num_gpus_per_worker']=1. #num_gpus_per_worker
+#config['num_gpus_per_worker']=1 #num_gpus_per_worker
+# Have to disable env checking becaus our environments are not compatible with
+# empty actions dicts
+config['disable_env_checking'] = True
 #config['nump_gpus']=1
 
 # used grid_search([4000, 16000, 65536], didn't matter too much
@@ -123,6 +126,9 @@ config['vf_loss_coeff'] = 0.5
 #config['vf_clip_param'] = 4000.
 
 config['observation_filter'] = 'NoFilter'
+# this is necessary, because otherwise the observation is flattened
+# (even in the "obs" entry of the input dict)
+config['_disable_preprocessor_api'] = True
 
 config['sgd_minibatch_size'] = 128
 config['num_sgd_iter'] = 10
@@ -199,7 +205,7 @@ analysis = tune.run(
     checkpoint_at_end=True,
     checkpoint_freq=312,
     stop={"timesteps_total": 20000000},
-    #resources_per_trial={ "cpu" : 2, "gpu" : 1./10. },
+    #resources_per_trial={ "cpu" : 2, "gpu" : 1. },
     config=config,
     loggers=[WandbLogger]
 )

@@ -2,7 +2,6 @@ import gym
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simulation_envs.observation_filter import MeanStdFilterSingleton
 import numpy as np
-import mujoco_py
 from gym import spaces
 from collections import Iterable
 
@@ -25,7 +24,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         - distribute_observations: how to distribute observations towards these controllers
         - distribute_contact_cost: how to distribute (contact) costs individually to controllers 
         - concatenate_actions: how to integrate the control signals from the controllers
-    """    
+    """
     
     policy_names = ["centr_A_policy"]
     
@@ -42,10 +41,8 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             use_target_velocity=self.use_target_velocity,
             ctrl_cost_weight=ctrl_cost_weight,
             contact_cost_weight=contact_cost_weight, 
-            hf_smoothness=hf_smoothness)   
-        
-        ant_mass = mujoco_py.functions.mj_getTotalmass(self.env.model)
-        mujoco_py.functions.mj_setTotalmass(self.env.model, 10. * ant_mass)
+            hf_smoothness=hf_smoothness)
+        self.env.scale_mass(10.)
         
         if self.use_target_velocity:
             if not isinstance(self.target_velocity_list, Iterable):
@@ -76,6 +73,12 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             self.curriculum_target_smoothness = config['range_smoothness'][1]
         if 'range_last_timestep' in config.keys():
             self.curriculum_last_timestep = config['range_last_timestep']
+
+
+    @property
+    def _agent_ids(self):
+        return set(self.agent_names)
+    
     
     def _normalize_observation(self, observation):
         obs_filter = MeanStdFilterSingleton.get_instance(observation.shape)
@@ -131,6 +134,19 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             obs_distributed[agent_name] = obs_full_normed[obs_idx]
             
         return obs_distributed
+
+    #def distribute_observations(self, obs_full):
+    #    if obs_full.ndim == 1:
+    #        return self._distribute_observations(obs_full)
+    #    elif obs_full.ndim == 2:
+    #        res = {}
+    #        for i, o in enumerate(obs_full):
+    #            d = self._distribute_observations(o)
+    #            res.update({ k + str(i) : v for k, v in d.items() })
+    #        return res
+    #    else:
+    #        NotImplementedError()
+
 
     def get_contact_cost_sum(self):
         """ Calculate sum of contact costs.

@@ -3,6 +3,7 @@ import numpy as np
 import os
 from scipy import ndimage
 from scipy.signal import convolve2d
+import mujoco_py
 
 DEFAULT_CAMERA_CONFIG = {
     'distance': 15.0,
@@ -142,6 +143,10 @@ class QuAntrupedEnv(AntEnv):
     @classmethod
     def observation_space(cls):
         return spaces.Box(-np.inf, np.inf, (len(cls.OBS_FIELDS),), np.float64)
+
+    def scale_mass(self, scale):
+        ant_mass = mujoco_py.functions.mj_getTotalmass(self.model)
+        mujoco_py.functions.mj_setTotalmass(self.model, scale * ant_mass)
 
     def reset(self):
         obs = super().reset()
@@ -321,7 +326,8 @@ class QuAntrupedEnv(AntEnv):
 
         # if no prefixes are given, pass an array with all indices.
         if prefixes is None:
-            return np.arange(len(self.CONTACT_FORCE_FIELDS))
+            n_fields = len(self.CONTACT_FORCE_FIELDS)
+            return np.arange(n_fields), np.ones([n_fields, 1])
 
         if weights is None:
             weights = np.ones(len(prefixes))

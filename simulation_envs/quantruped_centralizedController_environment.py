@@ -17,7 +17,7 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
     
     # This is ordering of the policies as applied here:
     policy_names = ["central_policy"]
-    agent_names = ["central_policy"]
+    agent_names = ["central_agent"]
     
     def __init__(self, config):
         super().__init__(config)

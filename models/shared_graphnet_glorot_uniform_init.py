@@ -27,7 +27,7 @@ class FullyConnectedNetwork_GNN_GlorotUniformInitializer(TFModelV2):
         vf_share_layers = model_config.get("vf_share_layers")
         free_log_std = model_config.get("free_log_std")
 
-        self_node_id_space, obs_space, adj_space = obs_space.original_space
+        self_node_id_space, obs_space, adj_space = obs_space
 
         self.actor = GraphNet(num_outputs, model_config)
         self.critic = GraphNet(1, model_config)
@@ -74,7 +74,7 @@ class FullyConnectedNetwork_GNN_GlorotUniformInitializer_GlobalCritic(TFModelV2)
         vf_share_layers = model_config.get("vf_share_layers")
         free_log_std = model_config.get("free_log_std")
 
-        self_node_id_space, obs_space, adj_space = obs_space.original_space
+        self_node_id_space, obs_space, adj_space = obs_space
 
         self.actor = GraphNet(num_outputs, model_config)
         self.critic = tf.keras.Sequential([
