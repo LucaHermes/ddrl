@@ -131,7 +131,7 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedFourControllerSuperEnv):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity
         index_space = spaces.MultiDiscrete([4])
-        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float32)
         adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
         graph_space = spaces.Tuple([index_space, obs_space, adj_space])
         policies = {
@@ -211,7 +211,7 @@ class QuantrupedFullyDecentralizedEnv(QuantrupedFourControllerSuperEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             QuantrupedFullyDecentralizedEnv.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -277,7 +277,7 @@ class Quantruped_LocalSingleNeighboringLeg_Env(QuantrupedFourControllerSuperEnv)
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 27 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_LocalSingleNeighboringLeg_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -342,7 +342,7 @@ class Quantruped_LocalSingleDiagonalLeg_Env(QuantrupedFourControllerSuperEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 27 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_LocalSingleDiagonalLeg_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -409,7 +409,7 @@ class Quantruped_LocalSingleToFront_Env(QuantrupedFourControllerSuperEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 27 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_LocalSingleToFront_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -474,7 +474,7 @@ class Quantruped_Local_Env(QuantrupedFourControllerSuperEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 35 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_Local_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),

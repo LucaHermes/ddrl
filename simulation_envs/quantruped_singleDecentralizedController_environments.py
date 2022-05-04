@@ -51,7 +51,7 @@ class QuantrupedSingleControllerSuperEnv(QuantrupedMultiPoliciesEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             QuantrupedSingleControllerSuperEnv.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., 1., (2,)), {}),
@@ -105,7 +105,7 @@ class QuantrupedSingleDecentralizedLegIDEnv(QuantrupedSingleControllerSuperEnv):
         n_dims = 19 + use_target_velocity #+ 2
 
         index_space = spaces.MultiDiscrete([4])
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         obs_space = spaces.Tuple([index_space, obs_space])
 
         policies = {

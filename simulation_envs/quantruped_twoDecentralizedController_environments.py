@@ -80,7 +80,7 @@ class Quantruped_TwoSideControllers_Env(QuantrupedMultiPoliciesEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 27 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_TwoSideControllers_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(np.array([-1.,-1.,-1.,-1.]), np.array([+1.,+1.,+1.,+1.])), {}),
@@ -162,7 +162,7 @@ class Quantruped_TwoDiagControllers_Env(QuantrupedMultiPoliciesEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 27 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             Quantruped_TwoDiagControllers_Env.policy_names[0]: (None,
                 obs_space, spaces.Box(-1., +1, (4,)), {}),

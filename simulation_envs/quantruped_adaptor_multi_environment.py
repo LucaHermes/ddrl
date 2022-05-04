@@ -1,9 +1,18 @@
+from simulation_envs.quantruped_isaac_v2 import QuantrupedIsaac
 import gym
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from simulation_envs.observation_filter import MeanStdFilterSingleton
 import numpy as np
 from gym import spaces
 from collections import Iterable
+
+
+def vectorize(fn, inputs):
+    res = {}
+    for i, o in inputs.items():
+        d = fn(o)
+        res.update({ k + f'_{i}' : v for k, v in d.items() })
+    return res
 
 class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     """ RLLib multiagent Environment that encapsulates a quadruped walker environment.
@@ -29,6 +38,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     policy_names = ["centr_A_policy"]
     
     def __init__(self, config):
+        use_isaac_env = config.get('use_isaac_env', True)
         contact_cost_weight = config.get('contact_cost_weight', 5e-4)
         ctrl_cost_weight = config.get('ctrl_cost_weight', 0.5)
         hf_smoothness = config.get('hf_smoothness', 1.)
@@ -36,8 +46,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         # default values where [1.0, 2.0]
         self.target_velocity_list = config.get('target_velocity')
         self.use_target_velocity = self.target_velocity_list is not None
+        self.use_isaac_env = use_isaac_env
         
         self.env = self.create_env(
+            use_isaac_env=use_isaac_env,
             use_target_velocity=self.use_target_velocity,
             ctrl_cost_weight=ctrl_cost_weight,
             contact_cost_weight=contact_cost_weight, 
@@ -84,7 +96,9 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         obs_filter = MeanStdFilterSingleton.get_instance(observation.shape)
         return obs_filter(observation)
 
-    def create_env(self, use_target_velocity=False, **env_args):
+    def create_env(self, use_isaac_env=False, use_target_velocity=False, **env_args):
+        if use_isaac_env:
+            return QuantrupedIsaac(**env_args)
         if use_target_velocity:
             env = "QuAntrupedTvel-v3" 
         else:
@@ -118,10 +132,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
                 # from flat (1.) towards the decreased minimum smoothness
                 self.current_smoothness = self.curriculum_target_smoothness + np.random.rand()*(self.curriculum_initial_smoothness - self.curriculum_target_smoothness)
             self.env.set_hf_parameter(self.current_smoothness)
-        self.env.create_new_random_hfield()
+        #self.env.create_new_random_hfield()
         self.env.reset()
 
-    def distribute_observations(self, obs_full):
+    def _distribute_observations(self, obs_full):
         """ 
         Construct dictionary that routes to each policy only the relevant
         information.
@@ -135,31 +149,28 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             
         return obs_distributed
 
-    #def distribute_observations(self, obs_full):
-    #    if obs_full.ndim == 1:
-    #        return self._distribute_observations(obs_full)
-    #    elif obs_full.ndim == 2:
-    #        res = {}
-    #        for i, o in enumerate(obs_full):
-    #            d = self._distribute_observations(o)
-    #            res.update({ k + str(i) : v for k, v in d.items() })
-    #        return res
-    #    else:
-    #        NotImplementedError()
+    def distribute_observations(self, obs_full):
+        if self.use_isaac_env:
+            return vectorize(self._distribute_observations, obs_full)
+        return self._distribute_observations(obs_full)
 
+    def distribute_contact_cost(self):
+        raw_contact_forces = self.env.get_contact_forces()
+        if self.use_isaac_env:
+            return vectorize(self._distribute_contact_cost, raw_contact_forces)
+        return self._distribute_contact_cost(raw_contact_forces)
 
     def get_contact_cost_sum(self):
         """ Calculate sum of contact costs.
         """
         contact_cost = {}
-        raw_contact_forces = self.env.sim.data.cfrc_ext
+        raw_contact_forces = self.env.get_contact_forces()
         contact_forces = np.clip(raw_contact_forces, -1., 1.)
         contact_cost = self.env.contact_cost_weight * np.sum(np.square(contact_forces))
         return contact_cost
 
-    def distribute_contact_cost(self):
+    def _distribute_contact_cost(self, raw_contact_forces):
         contact_cost = {}
-        raw_contact_forces = self.env.sim.data.cfrc_ext
         contact_forces = np.clip(raw_contact_forces, -1., 1.)
         contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
 
@@ -191,13 +202,16 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         fw_reward = info['reward_forward']
         rew = {}    
         contact_costs = self.distribute_contact_cost()  
-        for agent_name in self.agent_names:
+
+        for agent_name in self.env.iter_by_env(self.agent_names):
+            prefix, suffix, idx = agent_name.split('_')
+            idx = int(idx)
             if self.normalize_rewards:
-                rew[agent_name] = fw_reward - len(self.agent_names) \
+                rew[agent_name] = fw_reward[idx] - len(self.agent_names) \
                     * (self.env.ctrl_cost_weight * np.sum(np.square(action_dict[agent_name])) \
                     + contact_costs[agent_name])
             else:
-                rew[agent_name] = fw_reward / len(self.agent_names) \
+                rew[agent_name] = fw_reward[idx] / len(self.agent_names) \
                     - self.env.ctrl_cost_weight * np.sum(np.square(action_dict[agent_name])) \
                     - contact_costs[agent_name]
         return rew
@@ -206,9 +220,12 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         """ Collect actions from all agents and combine them for the single 
             call of the environment.
         """
-        actions = np.empty(8,)
+        n_envs = self.env.num_envs
+        actions = np.empty([n_envs, 8])
         for k in action_dict:
-            actions[self.action_indices[k]] = action_dict[k]
+            prefix, suffix, idx = k.split('_')
+            key = prefix + '_' + suffix 
+            actions[int(idx), self.action_indices[key]] = action_dict[k]
         return actions
 
     def reset(self):
@@ -222,19 +239,21 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         
         # Use with mujoco 2.
         #functions.mj_rnePostConstraint(self.env.model, self.env.data)
-        
         # Combine actions from all agents and step environment.
         obs_full, rew_w, done_w, info_w = self.env.step( self.concatenate_actions(action_dict) ) ##self.env.step( np.concatenate( (action_dict[self.agent_A],
             #action_dict[self.agent_B]) ))
-            
         # Distribute observations and rewards to the individual agents.
         obs_dict = self.distribute_observations(obs_full)
         rew_dict = self.distribute_reward(rew_w, info_w, action_dict)
+
+        d = all(done_w.values())
+        del done_w["__all__"]
+        done = {  a + f'_{i}' : v for i, v in done_w.items() for a in self.agent_names }
+        done["__all__"] = all(done_w.values())
         
-        done = {
-            "__all__": done_w,
-        }
-        
+        #print(list(obs_dict.keys()))
+        #print(list(rew_dict.keys()))
+        #print(list(done.keys()))
         #self.acc_forw_rew += info_w['reward_forward']
         #self.acc_ctrl_cost += info_w['reward_ctrl']
         #self.acc_contact_cost += info_w['reward_contact']
@@ -247,6 +266,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
          #   info_w['TimeLimit.truncated'] = not done
           #  done["__all__"] = True
         
+        #print('>>', obs_dict, rew_dict, done, {})
         return obs_dict, rew_dict, done, {}
         
     def render(self):
@@ -260,7 +280,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     @staticmethod
     def return_policies(use_target_velocity=False):
         n_dims = 43 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         # For each agent the policy interface has to be defined.
         policies = {
             QuantrupedMultiPoliciesEnv.policy_names[0]: (

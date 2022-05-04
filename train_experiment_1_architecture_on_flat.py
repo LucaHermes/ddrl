@@ -12,7 +12,7 @@ from ray.tune.logger import pretty_print
 from ray import tune
 from ray.tune import grid_search
 import time
-
+import os
 import models
 
 import argparse
@@ -89,9 +89,12 @@ elif policy_scope=="QuantrupedMultiEnv_SharedDecentralLegTransforms":
 else:
     from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
+cpus_per_worker = 1
+n_trials = 8#int(os.cpu_count() / (2. * cpus_per_worker))
+
 # Init ray: First line on server, second for laptop
 #ray.init(num_cpus=30, ignore_reinit_error=True)
-ray.init(num_gpus=1, ignore_reinit_error=True)
+ray.init(ignore_reinit_error=True)
 
 config = ppo.DEFAULT_CONFIG.copy()
 #print(config)
@@ -103,13 +106,14 @@ print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 #num_gpus = gpu_count / 3.
 #num_gpus_per_worker = (gpu_count - num_gpus) / 1.
 
-#config['num_gpus']=1#num_gpus
-config['num_workers']=2
-config['num_envs_per_worker']=4
+#config['num_gpus']=.1#num_gpus
+config['num_workers']=1#2
+config['num_envs_per_worker']=1#4
 #config['num_gpus_per_worker']=1 #num_gpus_per_worker
 # Have to disable env checking becaus our environments are not compatible with
 # empty actions dicts
 config['disable_env_checking'] = True
+config['horizon'] = 1000 # needed for new RAY version, otherwise the reward is logged at NaN. This seems to happen when the end of an episode is never reached. This is the case for us, as we truncate episodes to 400 steps and done = True is never returned.
 #config['nump_gpus']=1
 
 # used grid_search([4000, 16000, 65536], didn't matter too much
@@ -137,7 +141,6 @@ config['grad_clip']=0.5
 
 config['model']['custom_model'] = args.model #"fc_glorot_uniform_init"
 config['model']['fcnet_hiddens'] = [64, 64]
-
 #config['seed'] = round(time.time())
 
 # For running tune, we have to provide information on 
@@ -148,6 +151,7 @@ config["multiagent"] = {
         "policies": policies,
         "policy_mapping_fn": QuantrupedEnv.policy_mapping_fn,
         "policies_to_train": QuantrupedEnv.policy_names, #, "dec_B_policy"],
+        "count_steps_by" : "agent_steps"
     }
 
 config['env_config']['ctrl_cost_weight'] = 0.5#grid_search([5e-4,5e-3,5e-2])
@@ -201,11 +205,10 @@ if use_target_velocity:
 analysis = tune.run(
     "PPO",
     name=(run_prefix + policy_scope),
-    num_samples=10,
+    num_samples=n_trials,
     checkpoint_at_end=True,
-    checkpoint_freq=312,
+    checkpoint_freq=1,
     stop={"timesteps_total": 20000000},
-    #resources_per_trial={ "cpu" : 2, "gpu" : 1. },
     config=config,
     loggers=[WandbLogger]
 )

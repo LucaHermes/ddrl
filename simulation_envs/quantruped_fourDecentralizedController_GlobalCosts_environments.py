@@ -86,7 +86,7 @@ class QuantrupedFullyDecentralizedGlobalCostEnv(QuantrupedMultiPoliciesEnv):
     def return_policies(use_target_velocity=False):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         policies = {
             QuantrupedFullyDecentralizedGlobalCostEnv.policy_names[0]: (None,
                 obs_space, spaces.Box(np.array([-1.,-1.]), np.array([+1.,+1.])), {}),

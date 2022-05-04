@@ -63,7 +63,7 @@ class Quantruped_Centralized_Env(QuantrupedMultiPoliciesEnv):
     @staticmethod
     def return_policies(use_target_velocity=False):
         n_dims = 43 + use_target_velocity
-        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (n_dims,), np.float32)
         # For each agent the policy interface has to be defined.
         policies = {
             QuantrupedMultiPoliciesEnv.policy_names[0]: (

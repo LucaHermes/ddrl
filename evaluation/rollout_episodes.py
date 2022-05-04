@@ -76,9 +76,9 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
         power_total = 0.0
         steps = 0
         done = False
-        env.env.create_new_random_hfield()
+        #env.env.create_new_random_hfield()
         obs = env.reset()
-        start_pos = env.env.sim.data.qpos[0]
+        #start_pos = env.env.sim.data.qpos[0]
         # Control stepping:
         while not done and steps<num_steps:
             multi_obs = obs if multiagent else {_DUMMY_AGENT_ID: obs}
@@ -89,7 +89,7 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
                         agent_id, policy_agent_mapping(agent_id))
                     p_use_lstm = use_lstm[policy_id]
                     if p_use_lstm:
-                        a_action, p_state, _ = agent.compute_action(
+                        a_action, p_state, _ = agent.compute_single_action(
                             a_obs,
                             state=agent_states[agent_id],
                             prev_action=prev_actions[agent_id],
@@ -100,11 +100,12 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
                     else:
                         # Sample an action for the current observation 
                         # for one entry of the agent dict.
-                        a_action = agent.compute_action(
+                        a_action = agent.compute_single_action(
                             a_obs,
                             prev_action=prev_actions[agent_id],
                             prev_reward=prev_rewards[agent_id],
                             policy_id=policy_id)
+
                     a_action = flatten_to_single_ndarray(a_action)
                     action_dict[agent_id] = a_action
                     prev_actions[agent_id] = a_action
@@ -127,10 +128,11 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
                     #viewer.render(1280, 800, 0)
                     if tvel:
                         env.env.model.body_pos[14][0] += tvel * 0.05
-                    img = env.env.sim.render(width=1280,height=800, camera_name="side_run")
+                    #img = env.env.render(width=1280, height=800, camera_name="side_run")
+                    img = env.env.render(True, env_idx=0, mode='rgb_array')		
                     #data = np.asarray(viewer.read_pixels(800, 1280, depth=False)[::-1, :, :], dtype=np.uint8)                
                     #img_array = env.env.render('rgb_array')
-                    plt.imsave(save_images + str(steps).zfill(4) + '.png', img, origin='lower')
+                    plt.imsave(save_images + str(steps).zfill(4) + '.png', img, origin='upper')
                 else:
                     env.render()
             #saver.append_step(obs, action, next_obs, reward, done, info)
@@ -143,22 +145,22 @@ def rollout_episodes(env, agent, num_episodes=1, num_steps=1000, render=True, sa
             # multiplied by joint velocity for each joint.
             # Important: unfortunately there is a shift in the ctrl signals - therefore use roll
             # (control signals start with front right leg, front left leg starts at index 2)
-            current_power = np.sum(np.abs(np.roll(env.env.sim.data.ctrl, -2) * env.env.sim.data.qvel[6:]))
-            power_total += current_power
+            #current_power = np.sum(np.abs(np.roll(env.env.sim.data.ctrl, -2) * env.env.sim.data.qvel[6:]))
+            #power_total += current_power
         #saver.end_rollout()
-        distance_x = env.env.sim.data.qpos[0] - start_pos
-        com_vel = distance_x/steps
-        cost_of_transport = (power_total/steps) / (mujoco_py.functions.mj_getTotalmass(env.env.model) * com_vel)
+        #distance_x = env.env.sim.data.qpos[0] - start_pos
+        #com_vel = distance_x/steps
+        #cost_of_transport = (power_total/steps) / (mujoco_py.functions.mj_getTotalmass(env.env.model) * com_vel)
         # Weight is 8.78710174560547
         #print(steps, " - ", power_total, " / ", power_total/steps, "; CoT: ", cost_of_transport)
-        cot_eps.append(cost_of_transport)
-        reward_eps.append(reward_total)
-        vel_eps.append(com_vel)
-        dist_eps.append(distance_x)
-        steps_eps.append(steps)
-        power_total_eps.append(power_total)
+        #cot_eps.append(cost_of_transport)
+        #reward_eps.append(reward_total)
+        #vel_eps.append(com_vel)
+        #dist_eps.append(distance_x)
+        #steps_eps.append(steps)
+        #power_total_eps.append(power_total)
         #print(episodes, ' - ', reward_total, '; CoT: ', cost_of_transport, '; Vel: ', com_vel)
     # Return collected information from episode.
     if save_obs:
         np.save( str(save_obs+'/obs_list'), obs_list)
-    return (reward_eps, steps_eps, dist_eps, power_total_eps, vel_eps, cot_eps )
+    #return (reward_eps, steps_eps, dist_eps, power_total_eps, vel_eps, cot_eps )

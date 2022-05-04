@@ -148,6 +148,9 @@ class QuAntrupedEnv(AntEnv):
         ant_mass = mujoco_py.functions.mj_getTotalmass(self.model)
         mujoco_py.functions.mj_setTotalmass(self.model, scale * ant_mass)
 
+    def get_contact_forces(self):
+        return self.sim.data.cfrc_ext
+
     def reset(self):
         obs = super().reset()
         self.start_pos = self.sim.data.qpos[0] #self.get_body_com("torso")[:2].copy()

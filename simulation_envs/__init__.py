@@ -4,6 +4,7 @@ from ray.tune.registry import register_env
 from gym.wrappers.time_limit import TimeLimit
 from simulation_envs.quantruped_v3 import QuAntrupedEnv, QuAntrupedTVelEnv
 from simulation_envs.ant_v3_mujoco_2 import AntEnvMujoco2
+from simulation_envs.utils import Leg
 
 # Importing the different multiagent environments.
 from simulation_envs.quantruped_adaptor_multi_environment import QuantrupedMultiPoliciesEnv
@@ -22,6 +23,12 @@ from simulation_envs.quantruped_fourDecentralizedController_GlobalCosts_environm
 from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedEnv
 from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegIDEnv
 from simulation_envs.quantruped_singleDecentralizedController_environments import QuantrupedSingleDecentralizedLegTransforms
+
+
+# not a perfect solution, but it works
+# maybe move this into the train script and only execute if isaac gym should be used
+#from simulation_envs.quantruped_isaac import isaac_controler
+#isaac_controler.start()
 
 # Register Gym environment. 
 register(
@@ -65,3 +72,4 @@ register_env("QuantrupedMultiEnv_TwoDiags", lambda config: Quantruped_TwoDiagCon
 register_env('QuantrupedMultiEnv_SharedDecentral', lambda config: QuantrupedSingleDecentralizedEnv(config) )
 register_env('QuantrupedMultiEnv_SharedDecentralLegID', lambda config: QuantrupedSingleDecentralizedLegIDEnv(config) )
 register_env('QuantrupedMultiEnv_SharedDecentralLegTransforms', lambda config: QuantrupedSingleDecentralizedLegTransforms(config))
+

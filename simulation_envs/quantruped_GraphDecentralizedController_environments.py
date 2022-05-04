@@ -85,7 +85,7 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedDecentralizedGraphSuperEnv):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity
         index_space = spaces.MultiDiscrete([4])
-        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float32)
         adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
         graph_space = spaces.Tuple([index_space, obs_space, adj_space])
         policies = {
@@ -100,7 +100,7 @@ class QuantrupedDecentralizedGraphEnv(QuantrupedDecentralizedGraphSuperEnv):
         }
         return policies
 
-    def distribute_observations(self, obs_full):
+    def _distribute_observations(self, obs_full):
         ''' 
         Construct dictionary that routes to each policy only the relevant
         local information.
@@ -194,7 +194,7 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         # For each agent the policy interface has to be defined.
         n_dims = 19 + use_target_velocity + 2 + 2
         index_space = spaces.MultiDiscrete([4])
-        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float64)
+        obs_space = spaces.Box(-np.inf, np.inf, (4, n_dims,), np.float32)
         adj_space = spaces.MultiDiscrete(np.ones([4, 4]) * 2)
         graph_space = spaces.Tuple([index_space, obs_space, adj_space])
         policies = {
@@ -215,7 +215,7 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         print('~'*100)
         print('~'*100)
 
-    def distribute_observations(self, obs_full):
+    def _distribute_observations(self, obs_full):
         ''' 
         Construct dictionary that routes to each policy only the relevant
         local information.
@@ -239,7 +239,4 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
                 graph_observation.astype(obs_full.dtype), 
                 self.adj
             )
-        #print('~'*100)
-        #print(obs_distributed)
-        #print('~'*100)
         return obs_distributed
