@@ -94,7 +94,7 @@ n_trials = 10 #int(os.cpu_count() / (2. * cpus_per_worker))
 
 # Init ray: First line on server, second for laptop
 #ray.init(num_cpus=30, ignore_reinit_error=True)
-ray.init(num_cpus=64, ignore_reinit_error=True)
+ray.init(ignore_reinit_error=True)
 
 config = ppo.DEFAULT_CONFIG.copy()
 #print(config)
@@ -145,7 +145,7 @@ config['model']['fcnet_hiddens'] = [64, 64]
 
 # For running tune, we have to provide information on 
 # the multiagent which are part of the MultiEnvs
-policies = QuantrupedEnv.return_policies(use_target_velocity=False)
+policies = QuantrupedEnv.return_policies(use_target_velocity=use_target_velocity)
 
 config["multiagent"] = {
         "policies": policies,

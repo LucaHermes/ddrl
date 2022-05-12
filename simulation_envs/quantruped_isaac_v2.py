@@ -218,6 +218,7 @@ class QuantrupedIsaac(IsaacEnv):
         self.max_steps = 1000
         self.step_counter = 0
         self.frame_skip = 5
+        self.target_vel = None
 
         for _ in range(self._num_envs):
             self._create_env()
@@ -273,6 +274,13 @@ class QuantrupedIsaac(IsaacEnv):
             highs.append(h)
 
         return np.array(lows), np.array(highs)
+
+    def set_target_velocity(self, t_vel):
+        if self.target_vel is None:
+            # target velocity has never been set
+            # append target velocity as last index of the observation
+            self.OBS_FIELDS.append('body_target_x_vel')
+        self.target_vel = np.array([t_vel])
 
     #@lru_cache(maxsize=1)
     def is_healthy(self, time):
@@ -450,11 +458,27 @@ class QuantrupedIsaac(IsaacEnv):
 
         return torso_x_vel + healthy_reward - control_cost
 
-    def _get_reward(self, actions, prev_states, post_states):
+    def get_forward_reward(self, prev_states, post_states):
         prev_torso_x_pos = prev_states[:,0]['pose']['p']['x']
         post_torso_x_pos = post_states[:,0]['pose']['p']['x']
         torso_delta_x = (post_torso_x_pos - prev_torso_x_pos)
         torso_x_vel = torso_delta_x / self.dt
+
+        if self.target_vel is not None:
+            vel_diff = torso_x_vel - self.target_vel[0]
+            # for faster walking scale down the reward
+            vel_scale = 1 + 1. / self.target_vel[0]
+            # velocity reward
+            vel_reward = 1. / (np.abs(vel_diff) + 1)
+            # this is the distance from maximum reward to 1., or alternatively max(reward) - 1
+            min_reward = vel_scale * 1. / (self.target_vel[0] + 1)
+            return vel_scale * vel_reward - min_reward
+
+        return torso_x_vel
+
+    def _get_reward(self, actions, prev_states, post_states):
+        # compute the reward for moving forward
+        forward_reward = self.get_forward_reward(prev_states, post_states)
         # calculate reward for being a healthy robot
         healthy_reward = self.is_healthy(self.time) * self._healthy_reward
         # calculate energy cost of the current action
@@ -465,7 +489,7 @@ class QuantrupedIsaac(IsaacEnv):
         total_contact_cost = np.sum(contact_cost, axis=(-1, -2))
 
         reward_info = {
-                'forward_reward' : self.__to_dict(torso_x_vel),
+                'forward_reward' : self.__to_dict(forward_reward),
                 'healthy_reward' : self.__to_dict(healthy_reward),
                 'total_control_cost' : self.__to_dict(total_control_cost),
                 'total_contact_cost' : self.__to_dict(total_contact_cost),
@@ -473,7 +497,7 @@ class QuantrupedIsaac(IsaacEnv):
                 'contact_cost' : self.__to_dict(contact_cost),
         }
 
-        reward = torso_x_vel + healthy_reward - total_contact_cost - total_control_cost
+        reward = forward_reward + healthy_reward - total_contact_cost - total_control_cost
 
         return self.__to_dict(reward), reward_info
 
@@ -539,15 +563,20 @@ class QuantrupedIsaac(IsaacEnv):
         else:
             last_actions = self.last_actions
 
-        return self.__to_dict(np.concatenate((
+        obs = self.__to_dict(np.concatenate((
             torso_heights[...,np.newaxis],
             torso_quats,
             leg_dof_positions,
             torso_lin_vels,
             torso_ang_vels,
             leg_dof_velocities,
-            dof_forces, last_actions
+            dof_forces, last_actions,
         ), axis=-1).astype(np.float32))
+
+        if self.target_vel is not None:
+            return np.concatenate((obs, self.target_vel), axis=-1)
+            
+        else return obs
 
     def reset_env(self, env_id, return_obs=False):
         noise_low = -self.reset_noise_scale
