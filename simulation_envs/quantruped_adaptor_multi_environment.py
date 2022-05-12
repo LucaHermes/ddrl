@@ -154,11 +154,11 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             return vectorize(self._distribute_observations, obs_full)
         return self._distribute_observations(obs_full)
 
-    def distribute_contact_cost(self):
-        raw_contact_forces = self.env.get_contact_forces()
+    def distribute_contact_cost(self, contact_costs):
+        #raw_contact_forces = self.env.get_contact_forces()
         if self.use_isaac_env:
-            return vectorize(self._distribute_contact_cost, raw_contact_forces)
-        return self._distribute_contact_cost(raw_contact_forces)
+            return vectorize(self._distribute_contact_cost, contact_costs)
+        return self._distribute_contact_cost(raw_contact_forces) #todo adapt for non-isaac envs
 
     def get_contact_cost_sum(self):
         """ Calculate sum of contact costs.
@@ -169,10 +169,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         contact_cost = self.env.contact_cost_weight * np.sum(np.square(contact_forces))
         return contact_cost
 
-    def _distribute_contact_cost(self, raw_contact_forces):
+    def _distribute_contact_cost(self, contact_costs):
         contact_cost = {}
-        contact_forces = np.clip(raw_contact_forces, -1., 1.)
-        contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
+        #contact_forces = np.clip(raw_contact_forces, -1., 1.)
+        #contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
 
         for agent_name in self.agent_names:
             idx, weights = self.contact_force_indices[agent_name]
@@ -184,6 +184,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     def distribute_global_reward(self, reward_full, info, action_dict):
         """ Describe how to distribute reward.
         """
+        raise NotImplementedError('This function has not been implemented with the changed info dioct from isaac envs.')
         fw_reward = info['reward_forward']
         rew = {}    
         contact_costs_sum = self.get_contact_cost_sum()  
@@ -199,9 +200,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     def distribute_per_leg_reward(self, reward_full, info, action_dict):
         """ Describe how to distribute reward.
         """
-        fw_reward = info['reward_forward']
-        rew = {}    
-        contact_costs = self.distribute_contact_cost()  
+        fw_reward = info['forward_reward']
+        contact_cost = info['contact_cost']
+        rew = {}
+        contact_costs = self.distribute_contact_cost(contact_cost)
 
         for agent_name in self.env.iter_by_env(self.agent_names):
             prefix, suffix, idx = agent_name.split('_')
@@ -250,7 +252,8 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         del done_w["__all__"]
         done = {  a + f'_{i}' : v for i, v in done_w.items() for a in self.agent_names }
         done["__all__"] = all(done_w.values())
-        
+        #print(rew_dict)
+        #print(info_w)
         #print(list(obs_dict.keys()))
         #print(list(rew_dict.keys()))
         #print(list(done.keys()))
@@ -267,7 +270,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
           #  done["__all__"] = True
         
         #print('>>', obs_dict, rew_dict, done, {})
-        return obs_dict, rew_dict, done, {}
+        return obs_dict, rew_dict, done, {} #info_w
         
     def render(self):
         self.env.render()

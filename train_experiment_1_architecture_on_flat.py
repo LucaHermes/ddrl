@@ -90,11 +90,11 @@ else:
     from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
 cpus_per_worker = 1
-n_trials = 8#int(os.cpu_count() / (2. * cpus_per_worker))
+n_trials = 10 #int(os.cpu_count() / (2. * cpus_per_worker))
 
 # Init ray: First line on server, second for laptop
 #ray.init(num_cpus=30, ignore_reinit_error=True)
-ray.init(ignore_reinit_error=True)
+ray.init(num_cpus=64, ignore_reinit_error=True)
 
 config = ppo.DEFAULT_CONFIG.copy()
 #print(config)
@@ -107,8 +107,8 @@ print("SELECTED ENVIRONMENT: ", policy_scope, " = ", QuantrupedEnv)
 #num_gpus_per_worker = (gpu_count - num_gpus) / 1.
 
 #config['num_gpus']=.1#num_gpus
-config['num_workers']=1#2
-config['num_envs_per_worker']=1#4
+config['num_workers'] = 2 #2
+config['num_envs_per_worker'] = 1 #4
 #config['num_gpus_per_worker']=1 #num_gpus_per_worker
 # Have to disable env checking becaus our environments are not compatible with
 # empty actions dicts
@@ -154,7 +154,7 @@ config["multiagent"] = {
         "count_steps_by" : "agent_steps"
     }
 
-config['env_config']['ctrl_cost_weight'] = 0.5#grid_search([5e-4,5e-3,5e-2])
+config['env_config']['ctrl_cost_weight'] = 0.5 #grid_search([5e-4,5e-3,5e-2])
 config['env_config']['contact_cost_weight'] =  5e-2 #grid_search([5e-4,5e-3,5e-2])
 config['env_config']['norm_reward'] = args.norm_reward
 config['env_config']['global_reward'] = args.global_reward
@@ -166,6 +166,8 @@ config['env_config']['hf_smoothness'] = 1.0
 config['env_config']['curriculum_learning'] =  False
 config['env_config']['range_smoothness'] =  [1., 0.6]
 config['env_config']['range_last_timestep'] =  10000000
+#config['env_config']['sim_device'] =  -1
+#config['env_config']['rendering_device'] = -1
 
 # Setting target velocity (range of up to 2.)
 if use_target_velocity: 
@@ -207,8 +209,9 @@ analysis = tune.run(
     name=(run_prefix + policy_scope),
     num_samples=n_trials,
     checkpoint_at_end=True,
-    checkpoint_freq=1,
-    stop={"timesteps_total": 20000000},
+    checkpoint_freq=100,
+    #stop={"timesteps_total": 20000000},
+    stop={"agent_timesteps_total": 20000000},
     config=config,
     loggers=[WandbLogger]
 )

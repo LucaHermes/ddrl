@@ -11,15 +11,16 @@ def default_sim_params(gpu_enabled=False):
     sim_params = gymapi.SimParams()
     sim_params.physx.use_gpu = gpu_enabled
     sim_params.up_axis = gymapi.UP_AXIS_Z
-    sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.8)
+    sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
     sim_params.use_gpu_pipeline = False
+    sim_params.dt = 0.01
     return sim_params
 
 ISAAC_CONFIG = {
     'num_envs' : 10,
     'sim_params' : default_sim_params(gpu_enabled=False),
     'headless' : True,
-    'sim_device' : 0,
+    'sim_device' : -1,
     'rendering_device' : 0,
     'sim_type' : gymapi.SIM_PHYSX
 }
@@ -67,7 +68,7 @@ class IsaacEnv(Env):
     #@cached_property
     @property
     def dt(self):
-        return self.gym.get_sim_params(self.sim).dt
+        return self.gym.get_sim_params(self.sim).dt * self.skip_frames
 
     def get_obs(self):
         raise NotImplementedError
@@ -164,17 +165,17 @@ class QuantrupedIsaac(IsaacEnv):
         'hr_hip_pforce', 'hr_knee_pforce',
         'fr_hip_pforce', 'fr_knee_pforce', 
                                            # Index 35-42
-        'fr_hip_hist_ctrl', 'fr_knee_vel_hist_ctrl', 
         'fl_hip_hist_ctrl', 'fl_knee_vel_hist_ctrl', 
         'hl_hip_hist_ctrl', 'hl_knee_vel_hist_ctrl', 
-        'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl'
+        'hr_hip_hist_ctrl', 'hr_knee_vel_hist_ctrl',
+        'fr_hip_hist_ctrl', 'fr_knee_vel_hist_ctrl', 
     ]
 
     ACTION_FIELDS = [
-        'fr_hip', 'fr_knee',
         'fl_hip', 'fl_knee',
         'hl_hip', 'hl_knee',
         'hr_hip', 'hr_knee',
+        'fr_hip', 'fr_knee',
     ]
 
     # contact forces are excerted onto bodies, not joints
@@ -216,6 +217,7 @@ class QuantrupedIsaac(IsaacEnv):
         self.last_actions = None
         self.max_steps = 1000
         self.step_counter = 0
+        self.frame_skip = 5
 
         for _ in range(self._num_envs):
             self._create_env()
@@ -239,11 +241,12 @@ class QuantrupedIsaac(IsaacEnv):
         return self.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)
 
     def get_contact_forces(self):
-        return self.__to_dict(structured_to_unstructured(self.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)))
+        #return self.__to_dict(structured_to_unstructured(self.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)))
+        return self.__to_dict(self._contact_force_buffer)
 
     @property
     def done(self):
-        return np.logical_not(self.is_healthy()) #if self._terminate_when_unhealthy else False
+        return np.logical_not(self.is_healthy(self.time)) #if self._terminate_when_unhealthy else False
 
     @property
     def num_envs(self):
@@ -271,40 +274,12 @@ class QuantrupedIsaac(IsaacEnv):
 
         return np.array(lows), np.array(highs)
 
-    def __init_helpers(self):
-        self.__get_all_body_states = partial(
-            np.vectorize(
-                self.gym.get_actor_rigid_body_states,
-                signature='(),(),()->(n)'
-            ), 
-            self.envs, 
-            self.actor_handles, 
-            [gymapi.STATE_ALL]*self.num_envs
-        )
-        self.__get_all_dof_states = partial(
-            np.vectorize(
-                self.gym.get_actor_dof_states,
-                signature='(),(),()->(n)'
-            ), 
-            self.envs, 
-            self.actor_handles, 
-            [gymapi.STATE_ALL]*self.num_envs
-        )
-        self.__get_all_dof_forces = partial(
-            np.vectorize(
-                self.gym.get_actor_dof_forces,
-                signature='(),()->(n)'
-            ), 
-            self.envs, 
-            self.actor_handles
-        )
-
-    def is_healthy(self):
-        torso = self.get_body_states(self.time)
-        torso_vel = structured_to_unstructured(torso[:,0]['vel']['linear'])
-        torso_pos = structured_to_unstructured(torso[:,0]['pose']['p'])
-        min_z, max_z = self.healthy_z_range
-
+    #@lru_cache(maxsize=1)
+    def is_healthy(self, time):
+        torso = structured_to_unstructured(self.get_body_states(self.time))
+        torso_vel = torso[:,0, 7:10] # accesses [:,0]['vel']['linear']
+        torso_pos = torso[:,0, :3]   # accesses [:,0]['vel']['linear']
+        
         # adapted from [1]
         min_z, max_z = self.healthy_z_range
 
@@ -315,7 +290,7 @@ class QuantrupedIsaac(IsaacEnv):
 
     def _init_actor_transform(self):
         pos = gymapi.Transform()
-        pos.p = gymapi.Vec3(0.0, 0.0, 0.8)
+        pos.p = gymapi.Vec3(0.0, 0.0, 0.44)
         return pos
 
     def _create_env(self):
@@ -332,7 +307,6 @@ class QuantrupedIsaac(IsaacEnv):
         actor = self.gym.create_actor(env, ant_asset, self._init_actor_transform(), f'Ant-{len(self.envs)}', 1)
         self.envs.append(env)
         self.actor_handles.append(actor)
-        self.__init_helpers()
 
         color = gymapi.Vec3(np.random.uniform(), np.random.uniform(), np.random.uniform())
         for rb in range(self.gym.get_actor_rigid_body_count(env, actor)):
@@ -340,6 +314,7 @@ class QuantrupedIsaac(IsaacEnv):
 
         self.body_state_dtype = self.get_body_states(-1).dtype
         self.dof_state_dtype = self.get_dof_states(-1).dtype
+        self.n_rigid_bodies = int(self.gym.get_sim_rigid_body_count(self.sim) / self.num_envs)
 
         # save initial state of rigid bodies and DOFs for resetting
         self.init_body_state = structured_to_unstructured(self.get_body_states(-1)).copy()
@@ -409,7 +384,20 @@ class QuantrupedIsaac(IsaacEnv):
             self.gym.apply_actor_dof_efforts(self.envs[i], self.actor_handles[i], list(dof_efforts[i]))
         
         # step the physics
-        self.gym.simulate(self.sim)
+        for s in range(self.frame_skip):
+            self.gym.simulate(self.sim)
+            if s == 0:
+                self._contact_force_buffer = self._get_contact_forces(self.time)
+                continue
+            # structured arrays cannot be added, concatenation is a fast option here
+            # calling structured_to_unstructured in this loop takes very long
+            self._contact_force_buffer = np.concatenate((
+                self._contact_force_buffer, 
+                self._get_contact_forces(self.time)))
+        
+        self._contact_force_buffer = structured_to_unstructured(self._contact_force_buffer)\
+            .reshape(self.skip_frames, self.num_envs, self.n_rigid_bodies, 3).sum((0,-1))
+
         self.gym.fetch_results(self.sim, True)
 
         post_sim_body_states = self.get_body_states(self.time).copy()
@@ -417,13 +405,11 @@ class QuantrupedIsaac(IsaacEnv):
         self.last_actions = actions
         # then compute observation
         obs = self._get_obs()
-        rewards, forward_reward = self._get_reward(actions, pre_sim_body_states, post_sim_body_states)
-        contact_forces = structured_to_unstructured(self._get_contact_forces(self.time))
+        rewards, info = self._get_reward(actions, pre_sim_body_states, post_sim_body_states)
+        #contact_forces = structured_to_unstructured(self._get_contact_forces(self.time))
 
-        info = {
-            'contact_forces' : self.__to_dict(contact_forces),
-            'reward_forward' : self.__to_dict(forward_reward)
-        }        
+        info['contact_forces'] = self.__to_dict(self._contact_force_buffer)
+
         '''
         info = {
             'reward_forward': forward_reward,
@@ -440,12 +426,12 @@ class QuantrupedIsaac(IsaacEnv):
             'forward_reward': forward_reward,
         }
         '''
+        self.step_counter += 1
         done_list = np.logical_or(self.done, self.step_counter >= self.max_steps)
         dones = self.__to_dict(done_list)
         dones["__all__"] = all(done_list)
-        self.step_counter += 1
         
-        return obs, self.__to_dict(rewards), dones, info
+        return obs, rewards, dones, info
 
     def __to_dict(self, arr):
         return dict(enumerate(arr))
@@ -458,7 +444,7 @@ class QuantrupedIsaac(IsaacEnv):
         torso_x_post = torso_post_pos[0][0]
         torso_x_vel = (torso_x_post - torso_x_prev)/self.gym.get_sim_params(self.sim).dt
         # calculate reward for being a healthy robot
-        healthy_reward = float(self.is_healthy()[agent_idx]) * self._healthy_reward
+        healthy_reward = float(self.is_healthy(self.time)[agent_idx]) * self._healthy_reward
         # calculate energy cost of the current action
         control_cost = self.ctrl_cost_weight * np.sum(np.square(action))
 
@@ -470,10 +456,26 @@ class QuantrupedIsaac(IsaacEnv):
         torso_delta_x = (post_torso_x_pos - prev_torso_x_pos)
         torso_x_vel = torso_delta_x / self.dt
         # calculate reward for being a healthy robot
-        healthy_reward = self.is_healthy() * self._healthy_reward
+        healthy_reward = self.is_healthy(self.time) * self._healthy_reward
         # calculate energy cost of the current action
-        control_cost = self.ctrl_cost_weight * np.sum(np.square(actions), axis=-1)
-        return torso_x_vel + healthy_reward - control_cost, torso_x_vel
+        total_control_cost = self.ctrl_cost_weight * np.sum(np.square(actions), axis=-1)
+        contacts = structured_to_unstructured(self._get_contact_forces(self.time))
+        contacts = np.square(np.clip(contacts, -1., 1.))
+        contact_cost = self.contact_cost_weight * contacts
+        total_contact_cost = np.sum(contact_cost, axis=(-1, -2))
+
+        reward_info = {
+                'forward_reward' : self.__to_dict(torso_x_vel),
+                'healthy_reward' : self.__to_dict(healthy_reward),
+                'total_control_cost' : self.__to_dict(total_control_cost),
+                'total_contact_cost' : self.__to_dict(total_contact_cost),
+                'control_costs' : self.__to_dict(np.square(actions)),
+                'contact_cost' : self.__to_dict(contact_cost),
+        }
+
+        reward = torso_x_vel + healthy_reward - total_contact_cost - total_control_cost
+
+        return self.__to_dict(reward), reward_info
 
     def _get_agent_obs(self, agent_idx):
         rigid_body_states = self.get_body_states(self.time)[agent_idx]
@@ -512,14 +514,22 @@ class QuantrupedIsaac(IsaacEnv):
         ])
         
     def _get_obs(self):
-        body_states = self.get_body_states(self.time)
+        # converting the full-size array is fastest than converting multiple smaller
+        body_states = structured_to_unstructured(self.get_body_states(self.time))
         dof_states = self.get_dof_states(self.time)
         dof_forces = self.get_dof_forces(self.time)
 
-        torso_heights  = body_states['pose']['p']['z'][:,0]
-        torso_quats    = body_states['pose']['r'][:,0]
-        torso_lin_vels = body_states['vel']['linear'][:,0]
-        torso_ang_vels = body_states['vel']['angular'][:,0]
+        #torso_heights  = body_states['pose']['p']['z'][:,0]
+        #torso_quats    = body_states['pose']['r'][:,0]
+        #torso_lin_vels = body_states['vel']['linear'][:,0]
+        #torso_ang_vels = body_states['vel']['angular'][:,0]
+        torso_heights  = body_states[:,0,2]
+        torso_quats    = body_states[:,0,3:7]
+        torso_lin_vels = body_states[:,0,7:10]
+        torso_ang_vels = body_states[:,0,10:]
+        body_states = self.get_body_states(self.time)
+        dof_states = self.get_dof_states(self.time)
+        dof_forces = self.get_dof_forces(self.time)
 
         leg_dof_positions  = dof_states['pos']
         leg_dof_velocities = dof_states['vel']
@@ -531,10 +541,10 @@ class QuantrupedIsaac(IsaacEnv):
 
         return self.__to_dict(np.concatenate((
             torso_heights[...,np.newaxis],
-            structured_to_unstructured(torso_quats),
+            torso_quats,
             leg_dof_positions,
-            structured_to_unstructured(torso_lin_vels),
-            structured_to_unstructured(torso_ang_vels),
+            torso_lin_vels,
+            torso_ang_vels,
             leg_dof_velocities,
             dof_forces, last_actions
         ), axis=-1).astype(np.float32))
@@ -585,6 +595,7 @@ class QuantrupedIsaac(IsaacEnv):
             init_dofs[env_id], 
             gymapi.STATE_ALL)
         self.last_actions[env_id] = 0.
+        
         #self.clear_cache()
         if return_obs:
             return self._get_agent_obs(env_id)
@@ -630,14 +641,16 @@ class QuantrupedIsaac(IsaacEnv):
             self.gym.set_actor_dof_states(e, a, init_dofs[i], gymapi.STATE_ALL)
 
         self.last_actions = np.zeros_like(self.get_dof_forces(self.time))
+        obs = self._get_obs()
+
         #self.clear_cache()
 
-        return self._get_obs()
+        return obs
 
     def clear_cache(self):
         self.get_body_states.cache_clear()
-        self.get_dof_states.cache_clear()
-        self.get_dof_forces.cache_clear()
+        #self.get_dof_states.cache_clear()
+        #self.get_dof_forces.cache_clear()
 
     @classmethod
     def get_obs_indices(cls, prefixes=None):

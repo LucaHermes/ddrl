@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.getcwd())
 import ray
-import pickle5 as pickle
+import pickle as pickle
 import argparse
 import re
 import pathlib
@@ -73,8 +73,8 @@ print('Found checkpoint of epoch', epoch)
 print('Checkpoint file:', ckpt_file)
 
 
-os.path.isdir(frames_dir) or os.mkdir(frames_dir)
-os.path.isdir(out_dir) or os.mkdir(out_dir)
+os.path.isdir(frames_dir) or os.makedirs(frames_dir)
+os.path.isdir(out_dir) or os.makedirs(out_dir)
 out_file = os.path.join(out_dir, out_file)
 
 # Afterwards put together using
@@ -112,7 +112,7 @@ agent.restore(ckpt_file)
 if hasattr(agent, "workers") and isinstance(agent.workers, WorkerSet):
     env = agent.workers.local_worker().env
 
-time.sleep(1)
+time.sleep(2)
 
 # Rolling out simulation = stepping through simulation. 
 rollout_episodes(env, agent, 
