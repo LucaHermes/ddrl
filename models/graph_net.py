@@ -7,13 +7,14 @@ tf1, tf, tfv = try_import_tf()
 
 class GraphNet(tf.keras.Model):
 
-    def __init__(self, num_outputs, model_config):
+    def __init__(self, num_outputs, obs_space, model_config):
         super(GraphNet, self).__init__()
         activation = get_activation_fn(model_config.get("fcnet_activation"))
         hiddens = model_config.get("fcnet_hiddens", [])
+        self.state_size = obs_space.shape[-1]
         self.enc = tf.keras.layers.Dense(
             #hiddens[0],
-            19 * hiddens[0],
+            (self.state_size - 4) * hiddens[0],
             name="state_enc",
             activation=activation,
             kernel_initializer=GlorotUniformScaled(1.0))
@@ -32,7 +33,7 @@ class GraphNet(tf.keras.Model):
     def enc_leg_features(self, state):
         w = self.enc(state[...,-4:])
         n_nodes = tf.shape(w)[1]
-        w = tf.reshape(w, [-1, n_nodes, 19, self.leg_enc_dim])
+        w = tf.reshape(w, [-1, n_nodes, self.state_size-4, self.leg_enc_dim])
         leg_feats = tf.expand_dims(state[...,:-4], axis=-2)
         return tf.nn.tanh(tf.squeeze(leg_feats @ w, axis=-2))
 

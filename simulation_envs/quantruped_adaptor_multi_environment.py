@@ -59,7 +59,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         if self.use_target_velocity:
             if not isinstance(self.target_velocity_list, Iterable):
                 self.target_velocity_list = [self.target_velocity_list]
-            self.env.set_target_velocity( random.choice( self.target_velocity_list ) )
+            self.set_random_target_vel(self.target_velocity_list)
         
         if config.get('global_reward', False):
             # formerly used in exp1_simulation_envs, computes a single reward value 
@@ -181,6 +181,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
 
         return contact_cost
 
+    def set_random_target_vel(self, vel_list):
+        target_vel = np.random.choice(vel_list, size=self.env.num_envs)
+        self.env.set_target_velocity(target_vel)
+
     def distribute_global_reward(self, reward_full, info, action_dict):
         """ Describe how to distribute reward.
         """
@@ -232,7 +236,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
 
     def reset(self):
         if self.use_target_velocity:
-            self.env.set_target_velocity( random.choice( self.target_velocity_list ) )
+            self.set_random_target_vel(self.target_velocity_list)
         obs_original = self.env.reset()
         return self.distribute_observations(obs_original)
 

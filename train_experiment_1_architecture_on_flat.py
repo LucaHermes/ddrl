@@ -24,10 +24,10 @@ parser.add_argument("--model", required=False, default="ffn")
 parser.add_argument("--name", required=False, default=None)
 parser.add_argument("--norm_reward", action='store_true', default=False)
 parser.add_argument("--global_reward", action='store_true', default=False)
-parser.add_argument("--target_velocity", required=False)
+parser.add_argument("--target_velocity", nargs='+', type=float, required=False)
 args = parser.parse_args()
 
-use_target_velocity = 'target_velocity' in args and args.target_velocity
+use_target_velocity = 'target_velocity' in args and args.target_velocity is not None
 
 # currently norm_reward, global_reward and use_target_velocity are mutually exclusive (should we make this independent?)
 assert not (args.norm_reward and args.global_reward)
@@ -171,7 +171,7 @@ config['env_config']['range_last_timestep'] =  10000000
 
 # Setting target velocity (range of up to 2.)
 if use_target_velocity: 
-    config['env_config']['target_velocity'] = float(args.target_velocity)
+    config['env_config']['target_velocity'] = args.target_velocity
 
 # For curriculum learning: environment has to be updated every epoch
 def on_train_result(info):

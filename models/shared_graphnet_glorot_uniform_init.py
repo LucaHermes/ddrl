@@ -29,8 +29,8 @@ class FullyConnectedNetwork_GNN_GlorotUniformInitializer(TFModelV2):
 
         self_node_id_space, obs_space, adj_space = obs_space
 
-        self.actor = GraphNet(num_outputs, model_config)
-        self.critic = GraphNet(1, model_config)
+        self.actor = GraphNet(num_outputs, obs_space, model_config)
+        self.critic = GraphNet(1, obs_space, model_config)
 
         # We have to build these models to initialize the trainable parameters
         # We build by calling the model (instead of the build method) because tensorflow 

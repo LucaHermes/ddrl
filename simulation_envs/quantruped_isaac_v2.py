@@ -21,7 +21,7 @@ ISAAC_CONFIG = {
     'sim_params' : default_sim_params(gpu_enabled=False),
     'headless' : True,
     'sim_device' : -1,
-    'rendering_device' : 0,
+    'rendering_device' : -1,
     'sim_type' : gymapi.SIM_PHYSX
 }
 
@@ -280,7 +280,7 @@ class QuantrupedIsaac(IsaacEnv):
             # target velocity has never been set
             # append target velocity as last index of the observation
             self.OBS_FIELDS.append('body_target_x_vel')
-        self.target_vel = np.array([t_vel])
+        self.target_vel = np.array(t_vel)[...,np.newaxis]
 
     #@lru_cache(maxsize=1)
     def is_healthy(self, time):
@@ -465,13 +465,13 @@ class QuantrupedIsaac(IsaacEnv):
         torso_x_vel = torso_delta_x / self.dt
 
         if self.target_vel is not None:
-            vel_diff = torso_x_vel - self.target_vel[0]
+            vel_diff = torso_x_vel - self.target_vel[:,0]
             # for faster walking scale down the reward
-            vel_scale = 1 + 1. / self.target_vel[0]
+            vel_scale = 1 + 1. / self.target_vel[:,0]
             # velocity reward
             vel_reward = 1. / (np.abs(vel_diff) + 1)
             # this is the distance from maximum reward to 1., or alternatively max(reward) - 1
-            min_reward = vel_scale * 1. / (self.target_vel[0] + 1)
+            min_reward = vel_scale * 1. / (self.target_vel[:,0] + 1)
             return vel_scale * vel_reward - min_reward
 
         return torso_x_vel
@@ -563,7 +563,7 @@ class QuantrupedIsaac(IsaacEnv):
         else:
             last_actions = self.last_actions
 
-        obs = self.__to_dict(np.concatenate((
+        obs = np.concatenate((
             torso_heights[...,np.newaxis],
             torso_quats,
             leg_dof_positions,
@@ -571,12 +571,12 @@ class QuantrupedIsaac(IsaacEnv):
             torso_ang_vels,
             leg_dof_velocities,
             dof_forces, last_actions,
-        ), axis=-1).astype(np.float32))
+        ), axis=-1).astype(np.float32)
 
         if self.target_vel is not None:
-            return np.concatenate((obs, self.target_vel), axis=-1)
+            obs = np.concatenate((obs, self.target_vel), axis=-1)
             
-        else return obs
+        return self.__to_dict(obs)
 
     def reset_env(self, env_id, return_obs=False):
         noise_low = -self.reset_noise_scale
