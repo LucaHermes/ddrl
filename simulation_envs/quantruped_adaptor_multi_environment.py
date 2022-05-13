@@ -164,11 +164,9 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         # sum over xyz
         contact_costs = contact_costs.sum(-1)
         idx, weights = list(zip(*self.contact_force_indices.values()))
-        contact_costs = self.to_agent_dicts(contact_costs, idx, scale=np.stack(weights)[:,:,0])
 
-        agent_contact_costs = contact_costs[..., idx] * scale
-        agent_contact_costs = agent_contact_costs.sum(-1)
-        agent_features = agent_features.reshape(-1, *shape_ext, n_agent_features)
+        agent_contact_costs = contact_costs[..., idx] * np.stack(weights)[:,:,0]
+        agent_contact_costs = agent_contact_costs.sum(-1).reshape(-1)
 
         return dict(zip(self.agent_keys, agent_contact_costs))
 
@@ -304,21 +302,3 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             for env_idx in range(self.num_envs) 
             for a in self.agent_names ]
         return self._agent_keys
-
-    def to_agent_dicts(self, env_features, agent_idx, args=(), scale=None):
-        '''
-        Converts environment information, shaped (num_envs, ..., num_features)
-        into information for each agent (might be multiple agents inside a single
-        environment).
-        Returns a dictionary like { '<agent_name>_<env_idx>' : feature-vector }.
-        agent_idx contains one list per agent with the indices of features in env_features.
-        '''
-        n_agent_features = len(agent_idx[0])
-        shape_ext = env_features.shape[1:-1]
-        agent_features = env_features[..., agent_idx]
-        if scale is not None:
-            agent_features *= scale
-
-        agent_features = agent_features.reshape(-1, *shape_ext, n_agent_features)
-
-        return dict(zip(self.agent_keys, agent_features, *args))
