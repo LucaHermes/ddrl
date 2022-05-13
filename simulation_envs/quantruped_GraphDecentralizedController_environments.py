@@ -238,20 +238,16 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
 
         agent_features = obs_full_normed[..., list(self.obs_indices.values())]
         # add encodings to observation
-        print(leg_encodings.shape, agent_features.shape)
         agent_features = np.concatenate((agent_features, leg_encodings), axis=-1)
 
-        print('F', agent_features.shape)
         # because all agents receive the full graph and not only their own features,
         # the features are replicated along the second axis
         # obs_full-shape: [num_envs, agents_per_env, features]
         agent_features = np.tile(agent_features[:,np.newaxis], [1, self.n_agents, 1, 1])
-        print('F', agent_features.shape)
         agent_features = agent_features.reshape(-1, *agent_features.shape[-2:])
         agent_index = np.tile(np.arange(self.n_agents)[:,np.newaxis], [self.num_envs, 1])
         adj_matrices = [self.adj]*self.n_agents*self.num_envs
         # build dictionary
-        print(self.agent_keys, agent_index, agent_features.shape, np.array(adj_matrices).shape)
         agent_obs = dict(zip(self.agent_keys, zip(agent_index, agent_features, adj_matrices)))
 
 

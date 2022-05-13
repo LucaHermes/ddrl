@@ -166,7 +166,11 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         idx, weights = list(zip(*self.contact_force_indices.values()))
         contact_costs = self.to_agent_dicts(contact_costs, idx, scale=np.stack(weights)[:,:,0])
 
-        return contact_costs
+        agent_contact_costs = contact_costs[..., idx] * scale
+        agent_contact_costs = agent_contact_costs.sum(-1)
+        agent_features = agent_features.reshape(-1, *shape_ext, n_agent_features)
+
+        return dict(zip(self.agent_keys, agent_contact_costs))
 
     def set_random_target_vel(self, vel_list):
         target_vel = np.random.choice(vel_list, size=self.num_envs)
@@ -235,6 +239,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         # Combine actions from all agents and step environment.
         obs_full, rew_w, done_w, info_w = self.env.step( self.concatenate_actions(action_dict) ) ##self.env.step( np.concatenate( (action_dict[self.agent_A],
             #action_dict[self.agent_B]) ))
+
         # Distribute observations and rewards to the individual agents.
         obs_dict = self.distribute_observations(obs_full)
         rew_dict = self.distribute_reward(rew_w, info_w, action_dict)
@@ -286,7 +291,6 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
 
     @property
     def n_agents(self):
-        print(self.agent_names)
         return len(self.agent_names)
 
     @property
