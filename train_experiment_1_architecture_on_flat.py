@@ -25,7 +25,11 @@ parser.add_argument("--name", required=False, default=None)
 parser.add_argument("--norm_reward", action='store_true', default=False)
 parser.add_argument("--global_reward", action='store_true', default=False)
 parser.add_argument("--target_velocity", nargs='+', type=float, required=False)
+parser.add_argument("--nologs", action='store_true', default=False)
 args = parser.parse_args()
+
+if args.nologs:
+    os.environ["WANDB_MODE"] = "offline"
 
 use_target_velocity = 'target_velocity' in args and args.target_velocity is not None
 
@@ -90,7 +94,7 @@ else:
     from simulation_envs.quantruped_centralizedController_environment import Quantruped_Centralized_Env as QuantrupedEnv
 
 cpus_per_worker = 1
-n_trials = 10 #int(os.cpu_count() / (2. * cpus_per_worker))
+n_trials = 1 #int(os.cpu_count() / (2. * cpus_per_worker))
 
 # Init ray: First line on server, second for laptop
 #ray.init(num_cpus=30, ignore_reinit_error=True)

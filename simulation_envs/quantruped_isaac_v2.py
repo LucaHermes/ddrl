@@ -195,7 +195,7 @@ class QuantrupedIsaac(IsaacEnv):
     # X compute reward
     # X add noise to reset
     # X compute if done
-    # * make env for target velocity
+    # X make env for target velocity
     # * make env for bumpy terrain
     # * include com-based forces as a penalty 
     #   (see. cfrc_ext in https://mujoco.readthedocs.io/en/latest/APIreference.html?highlight=cfrc_ext#mjdata)
@@ -242,8 +242,8 @@ class QuantrupedIsaac(IsaacEnv):
         return self.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)
 
     def get_contact_forces(self):
-        #return self.__to_dict(structured_to_unstructured(self.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)))
-        return self.__to_dict(self._contact_force_buffer)
+        #return structured_to_unstructuredself.gym.get_rigid_contact_forces(self.sim).reshape(self.num_envs, -1)))
+        return self._contact_force_buffer
 
     @property
     def done(self):
@@ -416,7 +416,7 @@ class QuantrupedIsaac(IsaacEnv):
         rewards, info = self._get_reward(actions, pre_sim_body_states, post_sim_body_states)
         #contact_forces = structured_to_unstructured(self._get_contact_forces(self.time))
 
-        info['contact_forces'] = self.__to_dict(self._contact_force_buffer)
+        info['contact_forces'] = self._contact_force_buffer
 
         '''
         info = {
@@ -435,14 +435,9 @@ class QuantrupedIsaac(IsaacEnv):
         }
         '''
         self.step_counter += 1
-        done_list = np.logical_or(self.done, self.step_counter >= self.max_steps)
-        dones = self.__to_dict(done_list)
-        dones["__all__"] = all(done_list)
+        dones = np.logical_or(self.done, self.step_counter >= self.max_steps)
         
         return obs, rewards, dones, info
-
-    def __to_dict(self, arr):
-        return dict(enumerate(arr))
 
     def _get_agent_reward(self, agent_idx, action, prev_state, post_state):
         # calculate forward velocity reward
@@ -482,24 +477,25 @@ class QuantrupedIsaac(IsaacEnv):
         # calculate reward for being a healthy robot
         healthy_reward = self.is_healthy(self.time) * self._healthy_reward
         # calculate energy cost of the current action
-        total_control_cost = self.ctrl_cost_weight * np.sum(np.square(actions), axis=-1)
+        control_costs = np.square(actions)
+        total_control_cost = self.ctrl_cost_weight * np.sum(control_costs, axis=-1)
         contacts = structured_to_unstructured(self._get_contact_forces(self.time))
         contacts = np.square(np.clip(contacts, -1., 1.))
         contact_cost = self.contact_cost_weight * contacts
         total_contact_cost = np.sum(contact_cost, axis=(-1, -2))
 
         reward_info = {
-                'forward_reward' : self.__to_dict(forward_reward),
-                'healthy_reward' : self.__to_dict(healthy_reward),
-                'total_control_cost' : self.__to_dict(total_control_cost),
-                'total_contact_cost' : self.__to_dict(total_contact_cost),
-                'control_costs' : self.__to_dict(np.square(actions)),
-                'contact_cost' : self.__to_dict(contact_cost),
+                'forward_reward' : forward_reward,
+                'healthy_reward' : healthy_reward,
+                'total_control_cost' : total_control_cost,
+                'total_contact_cost' : total_contact_cost,
+                'control_costs' : control_costs,
+                'contact_cost' : contact_cost,
         }
 
         reward = forward_reward + healthy_reward - total_contact_cost - total_control_cost
 
-        return self.__to_dict(reward), reward_info
+        return reward, reward_info
 
     def _get_agent_obs(self, agent_idx):
         rigid_body_states = self.get_body_states(self.time)[agent_idx]
@@ -576,7 +572,7 @@ class QuantrupedIsaac(IsaacEnv):
         if self.target_vel is not None:
             obs = np.concatenate((obs, self.target_vel), axis=-1)
             
-        return self.__to_dict(obs)
+        return obs
 
     def reset_env(self, env_id, return_obs=False):
         noise_low = -self.reset_noise_scale

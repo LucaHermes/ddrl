@@ -141,10 +141,16 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         'agent_HR' : -135.,
         'agent_FR' : -45.,
     }
+
+    def __init__(self, config):
+        super().__init__(config)
+        leg_angles_list = np.array(list(self.leg_angles.values()))
+        rads = np.deg2rad(leg_angles_list / 2.)
+        self.leg_quats = np.pad(np.stack((np.sin(rads), np.cos(rads)), axis=-1), [[0,0],[2,0]])[np.newaxis]
         
     def leg_encoding(self, angle):
         rad = np.deg2rad(angle)
-        return np.stack((np.sin(rad), np.cos(rad)))
+        return np.stack((np.sin(rad), np.cos(rad)), axis=-1)
     
     def quaternion_multiply(self, quat1, quat2):
         x1, y1, z1, w1 = quat1
@@ -153,12 +159,15 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         y = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2
         z = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2
         w = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2
-        return np.array([x, y, z, w])
+        return np.stack([x, y, z, w])
 
-    def leg_encoding_ego(self, angle, full_obs):
-        # use half-angle to compute quaternion
-        quat_z, quat_w = self.leg_encoding(angle / 2.)
-        return self.quaternion_multiply(full_obs[1:5], [0., 0., quat_z, quat_w])
+    def leg_encoding_ego(self, full_obs):
+        env_quats = full_obs[:,1:5]
+        env_agent_quats = env_quats[:,np.newaxis].repeat(len(self.leg_angles), axis=1)
+        env_agent_quats = np.transpose(env_agent_quats, [2,0,1])
+        leg_quats = np.transpose(self.leg_quats, [2,0,1])
+        leg_encoding = self.quaternion_multiply(env_agent_quats, leg_quats)
+        return np.transpose(leg_encoding, [1, 2, 0])
 
     @staticmethod
     def policy_mapping_fn(agent_id):
@@ -215,28 +224,35 @@ class QuantrupedDecentralizedSharedGraphEnv(QuantrupedDecentralizedGraphEnv):
         print('~'*100)
         print('~'*100)
 
-    def _distribute_observations(self, obs_full):
+    def distribute_observations(self, obs_full):
         ''' 
         Construct dictionary that routes to each policy only the relevant
         local information.
+
+        obs_full-shape: [num_envs, features]
         '''
-        obs_distributed = {}
-        agent_idx = list(self.obs_indices.keys())
-
-
+        # normalize observations
         obs_full_normed = self._normalize_observation(obs_full)
-        get_leg_features = lambda agent_name: np.concatenate((
-            obs_full_normed[self.obs_indices[agent_name]],
-            # self.leg_encoding(self.leg_angles[agent_name])
-            self.leg_encoding_ego(self.leg_angles[agent_name], obs_full)
-        ))
-        
-        graph_observation = np.stack([ get_leg_features(a_idx) for a_idx in agent_idx ])
+        # compute the egocentric leg encodings
+        leg_encodings = self.leg_encoding_ego(obs_full)
 
-        for agent_name in self.agent_names:
-            obs_distributed[agent_name] = (
-                np.array([agent_idx.index(agent_name)]), 
-                graph_observation.astype(obs_full.dtype), 
-                self.adj
-            )
-        return obs_distributed
+        agent_features = obs_full_normed[..., list(self.obs_indices.values())]
+        # add encodings to observation
+        print(leg_encodings.shape, agent_features.shape)
+        agent_features = np.concatenate((agent_features, leg_encodings), axis=-1)
+
+        print('F', agent_features.shape)
+        # because all agents receive the full graph and not only their own features,
+        # the features are replicated along the second axis
+        # obs_full-shape: [num_envs, agents_per_env, features]
+        agent_features = np.tile(agent_features[:,np.newaxis], [1, self.n_agents, 1, 1])
+        print('F', agent_features.shape)
+        agent_features = agent_features.reshape(-1, *agent_features.shape[-2:])
+        agent_index = np.tile(np.arange(self.n_agents)[:,np.newaxis], [self.num_envs, 1])
+        adj_matrices = [self.adj]*self.n_agents*self.num_envs
+        # build dictionary
+        print(self.agent_keys, agent_index, agent_features.shape, np.array(adj_matrices).shape)
+        agent_obs = dict(zip(self.agent_keys, zip(agent_index, agent_features, adj_matrices)))
+
+
+        return agent_obs

@@ -7,13 +7,6 @@ from gym import spaces
 from collections import Iterable
 
 
-def vectorize(fn, inputs):
-    res = {}
-    for i, o in inputs.items():
-        d = fn(o)
-        res.update({ k + f'_{i}' : v for k, v in d.items() })
-    return res
-
 class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
     """ RLLib multiagent Environment that encapsulates a quadruped walker environment.
     
@@ -71,7 +64,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             self.distribute_reward = self.distribute_per_leg_reward
 
         self.normalize_rewards = config.get('norm_reward', False)
-
+        self._agent_keys = None
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
         
@@ -149,16 +142,10 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
             
         return obs_distributed
 
-    def distribute_observations(self, obs_full):
-        if self.use_isaac_env:
-            return vectorize(self._distribute_observations, obs_full)
-        return self._distribute_observations(obs_full)
-
-    def distribute_contact_cost(self, contact_costs):
-        #raw_contact_forces = self.env.get_contact_forces()
-        if self.use_isaac_env:
-            return vectorize(self._distribute_contact_cost, contact_costs)
-        return self._distribute_contact_cost(raw_contact_forces) #todo adapt for non-isaac envs
+    #def distribute_observations(self, obs_full):
+    #    if self.use_isaac_env:
+    #        return vectorize(self._distribute_observations, obs_full)
+    #    return self._distribute_observations(obs_full)
 
     def get_contact_cost_sum(self):
         """ Calculate sum of contact costs.
@@ -169,20 +156,20 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         contact_cost = self.env.contact_cost_weight * np.sum(np.square(contact_forces))
         return contact_cost
 
-    def _distribute_contact_cost(self, contact_costs):
-        contact_cost = {}
-        #contact_forces = np.clip(raw_contact_forces, -1., 1.)
-        #contact_costs = self.env.contact_cost_weight * np.square(contact_forces)
+    def distribute_contact_cost(self, contact_costs):
+        '''
+        Distribute the contact costs for each leg.
+        # contact_costs shape: [num_envs, num_bodies, XYZ]
+        '''
+        # sum over xyz
+        contact_costs = contact_costs.sum(-1)
+        idx, weights = list(zip(*self.contact_force_indices.values()))
+        contact_costs = self.to_agent_dicts(contact_costs, idx, scale=np.stack(weights)[:,:,0])
 
-        for agent_name in self.agent_names:
-            idx, weights = self.contact_force_indices[agent_name]
-            agent_contacts = np.sum(np.multiply(contact_costs[idx], weights))
-            contact_cost[agent_name] = agent_contacts
-
-        return contact_cost
+        return contact_costs
 
     def set_random_target_vel(self, vel_list):
-        target_vel = np.random.choice(vel_list, size=self.env.num_envs)
+        target_vel = np.random.choice(vel_list, size=self.num_envs)
         self.env.set_target_velocity(target_vel)
 
     def distribute_global_reward(self, reward_full, info, action_dict):
@@ -226,7 +213,7 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         """ Collect actions from all agents and combine them for the single 
             call of the environment.
         """
-        n_envs = self.env.num_envs
+        n_envs = self.num_envs
         actions = np.empty([n_envs, 8])
         for k in action_dict:
             prefix, suffix, idx = k.split('_')
@@ -252,10 +239,9 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
         obs_dict = self.distribute_observations(obs_full)
         rew_dict = self.distribute_reward(rew_w, info_w, action_dict)
 
-        d = all(done_w.values())
-        del done_w["__all__"]
-        done = {  a + f'_{i}' : v for i, v in done_w.items() for a in self.agent_names }
-        done["__all__"] = all(done_w.values())
+        done = dict(zip(self.agent_keys, done_w.repeat(self.n_agents)))
+        done["__all__"] = np.all(done_w, axis=-1)
+
         #print(rew_dict)
         #print(info_w)
         #print(list(obs_dict.keys()))
@@ -297,3 +283,38 @@ class QuantrupedMultiPoliciesEnv(MultiAgentEnv):
                 {})
         }
         return policies
+
+    @property
+    def n_agents(self):
+        print(self.agent_names)
+        return len(self.agent_names)
+
+    @property
+    def num_envs(self):
+        return self.env.num_envs
+    
+    @property
+    def agent_keys(self):
+        if self._agent_keys is None:
+            self._agent_keys = [ a + f'_{env_idx}' 
+            for env_idx in range(self.num_envs) 
+            for a in self.agent_names ]
+        return self._agent_keys
+
+    def to_agent_dicts(self, env_features, agent_idx, args=(), scale=None):
+        '''
+        Converts environment information, shaped (num_envs, ..., num_features)
+        into information for each agent (might be multiple agents inside a single
+        environment).
+        Returns a dictionary like { '<agent_name>_<env_idx>' : feature-vector }.
+        agent_idx contains one list per agent with the indices of features in env_features.
+        '''
+        n_agent_features = len(agent_idx[0])
+        shape_ext = env_features.shape[1:-1]
+        agent_features = env_features[..., agent_idx]
+        if scale is not None:
+            agent_features *= scale
+
+        agent_features = agent_features.reshape(-1, *shape_ext, n_agent_features)
+
+        return dict(zip(self.agent_keys, agent_features, *args))
